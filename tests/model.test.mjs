@@ -21,15 +21,14 @@ test("chromatic ring follows strict semitone order", () => {
   assert.equal(model.chromaticMidDeg(11), 240)
 })
 
-test("two-octave keyboard ranges use scientific pitch notation", () => {
-  assert.equal(model.clampBaseOctave(-4), 1)
-  assert.equal(model.clampBaseOctave(20), 6)
-  assert.equal(model.clampBaseOctave("invalid"), 3)
-  assert.equal(model.midiForC(3), 48)
+test("vocal ranges use scientific pitch notation and a 31-key maximum", () => {
   assert.equal(model.midiNoteName(48), "C3")
   assert.equal(model.midiNoteName(49), "C♯3")
   assert.equal(model.midiNoteName(72), "C5")
-  assert.equal(model.octaveRangeLabel(3), "C3–C5")
+  assert.deepEqual({ ...model.normalizeMidiRange(48, 72, "") }, { low: 48, high: 72, count: 25, label: "C3–C5" })
+  assert.deepEqual({ ...model.normalizeMidiRange(36, 84, "lower") }, { low: 36, high: 66, count: 31, label: "C2–F♯4" })
+  assert.deepEqual({ ...model.normalizeMidiRange(36, 84, "upper") }, { low: 54, high: 84, count: 31, label: "F♯3–C6" })
+  assert.deepEqual({ ...model.normalizeMidiRange(20, 100, "lower") }, { low: 36, high: 66, count: 31, label: "C2–F♯4" })
 })
 
 test("quality formulas produce the expected C triads", () => {
@@ -74,6 +73,25 @@ test("inversion changes bass and label but not the pitch-class graph", () => {
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 0, 48)), [48, 52, 55])
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 1, 48)), [52, 55, 60])
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 2, 48)), [55, 60, 64])
+  assert.deepEqual(Array.from(model.midiVoicingInRange(0, 0, 0, 48, 72)), [48, 52, 55])
+  assert.deepEqual(Array.from(model.midiVoicingInRange(0, 0, 1, 48, 72)), [52, 55, 60])
+  assert.deepEqual(Array.from(model.midiVoicingInRange(0, 0, 2, 48, 72)), [55, 60, 64])
+  assert.deepEqual(Array.from(model.midiVoicingInRange(0, 0, 0, 48, 54)), [])
+})
+
+test("every fitted inversion stays ascending and inside the selected range", () => {
+  for (let rootIndex = 0; rootIndex < 12; rootIndex += 1) {
+    for (let qualityIndex = 0; qualityIndex < 4; qualityIndex += 1) {
+      for (let inversionIndex = 0; inversionIndex < 3; inversionIndex += 1) {
+        const notes = Array.from(model.midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, 36, 66))
+        assert.equal(notes.length, 3)
+        assert.ok(notes[0] >= 36)
+        assert.ok(notes[2] <= 66)
+        assert.ok(notes[0] < notes[1] && notes[1] < notes[2])
+        assert.equal(model.wrap(notes[0], 12), model.chord(rootIndex, qualityIndex, inversionIndex).bass)
+      }
+    }
+  }
 })
 
 test("held pitch classes are identified independently of key order", () => {

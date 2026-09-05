@@ -14,7 +14,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 
 - Make the internal interval structure of a chord immediately visible.
 - Select a root and triad quality through direct controls, then audition root position, first inversion, or second inversion.
-- Use the same two-octave computer-keyboard layout as Quick Piano to activate pitch classes while keys are held.
+- Use up to 31 computer keys as a contiguous chromatic keyboard range to activate pitch classes while keys are held.
 - Show similarities and differences between consecutive chords.
 - Play all active notes as one synchronized chord through a stable audio stream.
 - Sustain common tones smoothly when the chord changes.
@@ -58,15 +58,16 @@ current.bass           pitch class derived from the inversion
 held.keys              physical piano keys currently held
 held.pitchClasses      unique pitch classes derived modulo 12
 held.bass              pitch class of the lowest held keyboard note
-settings.baseOctave    lower C of the shared two-octave performance range
+settings.rangeLowMidi  inclusive lower note of the performance range
+settings.rangeHighMidi inclusive upper note of the performance range
 revision               monotonically increasing change identifier
 ```
 
 Selecting a root or quality updates the persistent triad atomically. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
 
-Keyboard input follows Quick Piano exactly. White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
+Keyboard input preserves Quick Piano's physical layout and extends it to 31 contiguous semitones. Notes ascend across `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
 
-The settings modal moves the entire 25-note keyboard mapping and all preset inversion auditions as one two-octave range. C3–C5 is the default; C1–C3 through C6–C8 are available. Opening or changing the range silences current computer-key notes and any timed audition before remapping them, preventing old-register audio or stale MIDI notes, and persists `keyboardBaseOctave` in the plugin's top-level `shell.json` entry.
+The settings modal exposes independent lower and upper semitone handles over the global C2–C6 span. The selected range is inclusive and limited to 31 notes, equivalent to 2.5 octaves; moving either handle past that width shifts the other bound. C3–C5 is the default, and selecting fewer notes disables unused keys at the end of the 31-key mapping. Opening the modal silences current computer-key notes and any timed audition before remapping them, preventing old-register audio or stale MIDI notes. The plugin persists `rangeLowMidi` and `rangeHighMidi` in its top-level `shell.json` entry and migrates the earlier `keyboardBaseOctave` setting when present.
 
 No musical selection cycles from the keyboard: a mapped piano key always resolves to one fixed note, and repeating the same combination always produces the same pitch-class set and chord identity. Root, quality, and inversion presets are changed with the pointer controls rather than cycling shortcuts.
 
@@ -125,7 +126,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 ### Piano-key input
 
-- Match the complete `max.piano` keyboard mapping from C4 through C6.
+- Map up to 31 computer keys chromatically from the selected lower bound.
 - Activate nodes on key press and deactivate them on key release.
 - Reduce keyboard notes modulo 12 for the circular display.
 - Reference-count equivalent pitch classes so octave duplicates do not release a node prematurely.
@@ -133,7 +134,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Identify supported triads independently of the order in which their keys were pressed.
 - Show the inversion implied by the lowest held keyboard note.
 - Show exactly the currently held pitch classes, including individual notes and partial combinations.
-- Apply the configured two-octave range to both computer-key MIDI notes and preset inversion auditions.
+- Apply the configured C2–C6 bounded range to both computer-key MIDI notes and preset inversion auditions.
 
 ### Chord identity
 
@@ -147,7 +148,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Support mouse selection and keyboard navigation.
 - Provide visible hover and keyboard-focus states.
 - Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
-- Provide a modal range selector whose persisted choice is visible from the main overlay.
+- Provide a dual-bound semitone range slider whose persisted choice and active key count are visible from the main overlay.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
@@ -196,7 +197,7 @@ Pressing an inversion button sends the current preset's complete MIDI voicing to
 
 - Every root can be combined with major, minor, diminished, or augmented quality.
 - Root, first, and second inversion produce the same three nodes and edges while changing the bass and slash label.
-- Holding any `max.piano` key activates the corresponding pitch-class node; holding a triad draws its three-node shape.
+- Holding any active mapped key activates the corresponding pitch-class node; holding a triad draws its three-node shape.
 - Releasing one of two held octave-equivalent keys leaves their shared node active.
 - Three active pitch classes produce exactly three undirected edges.
 - Changing the root or quality changes the graph and label in one visible action.
@@ -250,7 +251,7 @@ Example status messages:
 
 The control path publishes held and audition notes through atomic MIDI bitsets. The realtime callback reads those bitsets at buffer boundaries, so JSON parsing, allocation, process management, and mutex locking stay outside the audio path. Held notes and timed auditions are independent sources whose union drives the voices.
 
-Preset voicings start from the selected root in the configured base-octave range. Root position places the other chord tones above it; first inversion raises the root by one octave; second inversion also raises the original third by one octave. This keeps each audition ascending while preserving the same three pitch classes and aligns auditions with the computer-keyboard register.
+Preset voicings use the lowest occurrence of the requested inversion bass that permits the complete ascending triad to fit inside the selected lower and upper bounds. No chord tone is dropped or folded when the range is too narrow; the overlay reports that the inversion does not fit instead. This preserves the same three pitch classes while aligning auditions with the singer's chosen register.
 
 ## Synthesis behavior
 

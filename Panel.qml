@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Controls as QQC
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -18,24 +19,35 @@ Item {
   property var heldKeys: ({})
   property var heldPitches: []
   property int heldBass: -1
-  property int baseOctave: Model.DEFAULT_BASE_OCTAVE
+  property int rangeLowMidi: Model.DEFAULT_RANGE_LOW
+  property int rangeHighMidi: Model.DEFAULT_RANGE_HIGH
   property bool settingsOpen: false
   property string audioStatus: "Choose an inversion to audition"
 
   readonly property color foreground: Color.foreground
-  readonly property int baseMidi: Model.midiForC(root.baseOctave)
-  readonly property string rangeLabel: Model.octaveRangeLabel(root.baseOctave)
+  readonly property var selectedRange: Model.normalizeMidiRange(root.rangeLowMidi, root.rangeHighMidi, "")
+  readonly property string rangeLabel: selectedRange.label
+  readonly property int mappedKeyCount: selectedRange.count
 
   readonly property var pianoKeys: [
-    Qt.Key_A, Qt.Key_W, Qt.Key_S, Qt.Key_E, Qt.Key_D, Qt.Key_F, Qt.Key_T, Qt.Key_G, Qt.Key_Y, Qt.Key_H, Qt.Key_U, Qt.Key_J,
-    Qt.Key_K, Qt.Key_O, Qt.Key_L, Qt.Key_P, Qt.Key_Semicolon, Qt.Key_Apostrophe, Qt.Key_BracketLeft, Qt.Key_Z,
-    Qt.Key_BracketRight, Qt.Key_X, Qt.Key_Backslash, Qt.Key_C, Qt.Key_V
+    { key: Qt.Key_A, label: "A" }, { key: Qt.Key_W, label: "W" }, { key: Qt.Key_S, label: "S" },
+    { key: Qt.Key_E, label: "E" }, { key: Qt.Key_D, label: "D" }, { key: Qt.Key_F, label: "F" },
+    { key: Qt.Key_T, label: "T" }, { key: Qt.Key_G, label: "G" }, { key: Qt.Key_Y, label: "Y" },
+    { key: Qt.Key_H, label: "H" }, { key: Qt.Key_U, label: "U" }, { key: Qt.Key_J, label: "J" },
+    { key: Qt.Key_K, label: "K" }, { key: Qt.Key_O, label: "O" }, { key: Qt.Key_L, label: "L" },
+    { key: Qt.Key_P, label: "P" }, { key: Qt.Key_Semicolon, label: ";" }, { key: Qt.Key_Apostrophe, label: "'" },
+    { key: Qt.Key_BracketLeft, label: "[" }, { key: Qt.Key_Z, label: "Z" }, { key: Qt.Key_BracketRight, label: "]" },
+    { key: Qt.Key_X, label: "X" }, { key: Qt.Key_Backslash, label: "\\" }, { key: Qt.Key_C, label: "C" },
+    { key: Qt.Key_V, label: "V" }, { key: Qt.Key_B, label: "B" }, { key: Qt.Key_N, label: "N" },
+    { key: Qt.Key_M, label: "M" }, { key: Qt.Key_Comma, label: "," }, { key: Qt.Key_Period, label: "." },
+    { key: Qt.Key_Slash, label: "/" }
   ]
   readonly property var pianoNotes: {
     var notes = []
-    for (var index = 0; index < root.pianoKeys.length; index++) {
-      var midi = root.baseMidi + index
-      notes.push({ note: Model.midiNoteName(midi), midi: midi, key: root.pianoKeys[index] })
+    var count = Math.min(root.mappedKeyCount, root.pianoKeys.length)
+    for (var index = 0; index < count; index++) {
+      var midi = root.rangeLowMidi + index
+      notes.push({ note: Model.midiNoteName(midi), midi: midi, key: root.pianoKeys[index].key, keyLabel: root.pianoKeys[index].label })
     }
     return notes
   }
@@ -53,7 +65,6 @@ Item {
   readonly property color chromaticRootBorderColor: Util.alpha(root.foreground, 0.92)
   readonly property color transparentForeground: Util.alpha(root.foreground, 0.0)
   readonly property color transparentAccent: Util.alpha(root.activeColor, 0.0)
-  readonly property var primaryKeyLabels: ["A", "W", "S", "E", "D", "F", "T", "G", "Y", "H", "U", "J"]
 
   function open(payloadJson) {
     root.opened = true
@@ -81,27 +92,43 @@ Item {
       root.open("{}")
   }
 
-  function configuredBaseOctave() {
+  function configuredMidiRange() {
     var config = root.shell ? root.shell.shellConfig : null
     var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
     var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
     for (var i = 0; i < plugins.length; i++) {
       var entry = plugins[i]
-      if (entry && entry.id === pluginId && entry.keyboardBaseOctave !== undefined)
-        return Model.clampBaseOctave(entry.keyboardBaseOctave)
+      if (!entry || entry.id !== pluginId)
+        continue
+      if (entry.rangeLowMidi !== undefined && entry.rangeHighMidi !== undefined)
+        return Model.normalizeMidiRange(entry.rangeLowMidi, entry.rangeHighMidi, "")
+      if (entry.keyboardBaseOctave !== undefined) {
+        var oldLow = Model.midiForC(entry.keyboardBaseOctave)
+        var oldHigh = oldLow + 24
+        if (oldLow < Model.MIN_RANGE_MIDI) {
+          oldHigh += Model.MIN_RANGE_MIDI - oldLow
+          oldLow = Model.MIN_RANGE_MIDI
+        }
+        if (oldHigh > Model.MAX_RANGE_MIDI) {
+          oldLow -= oldHigh - Model.MAX_RANGE_MIDI
+          oldHigh = Model.MAX_RANGE_MIDI
+        }
+        return Model.normalizeMidiRange(oldLow, oldHigh, "")
+      }
     }
-    return Model.DEFAULT_BASE_OCTAVE
+    return Model.normalizeMidiRange(Model.DEFAULT_RANGE_LOW, Model.DEFAULT_RANGE_HIGH, "")
   }
 
   function loadSettings() {
-    var octave = root.configuredBaseOctave()
-    if (octave === root.baseOctave)
+    var range = root.configuredMidiRange()
+    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi)
       return
     root.silenceForRangeChange()
-    root.baseOctave = octave
+    root.rangeLowMidi = range.low
+    root.rangeHighMidi = range.high
   }
 
-  function persistBaseOctave() {
+  function persistMidiRange() {
     if (!root.shell || typeof root.shell.updateEntryInline !== "function")
       return
     var config = root.shell.shellConfig
@@ -113,22 +140,30 @@ Item {
       if (!entry || entry.id !== pluginId)
         continue
       for (var key in entry)
-        if (key !== "id")
+        if (key !== "id" && key !== "keyboardBaseOctave")
           settings[key] = entry[key]
       break
     }
-    settings.keyboardBaseOctave = root.baseOctave
+    settings.rangeLowMidi = root.rangeLowMidi
+    settings.rangeHighMidi = root.rangeHighMidi
     root.shell.updateEntryInline(pluginId, settings)
   }
 
-  function setBaseOctave(octave) {
-    var next = Model.clampBaseOctave(octave)
-    if (next !== root.baseOctave) {
-      root.silenceForRangeChange()
-      root.baseOctave = next
-      root.audioStatus = "Range set to " + root.rangeLabel
-    }
-    root.persistBaseOctave()
+  function applyMidiRange(range) {
+    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi)
+      return false
+    root.rangeLowMidi = range.low
+    root.rangeHighMidi = range.high
+    root.audioStatus = "Range set to " + root.rangeLabel
+    return true
+  }
+
+  function setRangeLower(midi) {
+    root.applyMidiRange(Model.normalizeMidiRange(midi, root.rangeHighMidi, "lower"))
+  }
+
+  function setRangeUpper(midi) {
+    root.applyMidiRange(Model.normalizeMidiRange(root.rangeLowMidi, midi, "upper"))
   }
 
   function openSettings() {
@@ -176,7 +211,13 @@ Item {
     if (!changed)
       root.revision += 1
     var chord = Model.chord(root.rootIndex, root.qualityIndex, index)
-    engine.audition(root.revision, Model.midiVoicing(root.rootIndex, root.qualityIndex, index, root.baseMidi), 900)
+    var notes = Model.midiVoicingInRange(root.rootIndex, root.qualityIndex, index, root.rangeLowMidi, root.rangeHighMidi)
+    engine.audition(root.revision, notes, notes.length > 0 ? 900 : 50)
+    if (notes.length === 0) {
+      root.audioStatus = chord.label + " · " + chord.inversionLabel + " inversion does not fit " + root.rangeLabel
+      playFlash.stop()
+      return
+    }
     root.audioStatus = "Auditioning " + chord.label + " · " + chord.inversionLabel + " inversion"
     playFlash.restart()
   }
@@ -186,6 +227,13 @@ Item {
       if (root.pianoNotes[i].key === key)
         return root.pianoNotes[i]
     return null
+  }
+
+  function keyLabelForPitch(pitch) {
+    for (var i = 0; i < root.pianoNotes.length; i++)
+      if (Model.wrap(root.pianoNotes[i].midi, 12) === pitch)
+        return root.pianoNotes[i].keyLabel
+    return ""
   }
 
   function rebuildHeldState(nextKeys) {
@@ -518,7 +566,7 @@ Item {
 
                   Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.primaryKeyLabels[note.pitch]
+                    text: root.keyLabelForPitch(note.pitch)
                     color: preset || held ? Color.popups.background : root.foreground
                     opacity: preset || held ? 0.78 : 0.42
                     font.family: Style.font.family
@@ -673,7 +721,7 @@ Item {
 
         Text {
           width: parent.width
-          text: "Piano keys: A S D F G H J K L ; ' Z X C V  ·  black: W E T Y U O P [ ] \\"
+          text: "Keys low → high: A W S E D F T G Y H U J K O L P ; ' [ Z ] X \\ C V B N M , . /"
           color: root.foreground
           opacity: 0.45
           font.family: Style.font.family
@@ -683,7 +731,7 @@ Item {
 
         Text {
           width: parent.width
-          text: "Range " + root.rangeLabel + " · Each piano key is one fixed note · Esc close"
+          text: "Range " + root.rangeLabel + " · " + root.mappedKeyCount + " fixed-note keys · Esc close"
           color: root.foreground
           opacity: 0.45
           font.family: Style.font.family
@@ -706,7 +754,7 @@ Item {
         Rectangle {
           anchors.centerIn: parent
           width: Math.min(parent.width - Style.space(64), Style.space(680))
-          height: Style.space(310)
+          height: Style.space(350)
           radius: Math.max(Style.cornerRadius, Style.space(12))
           color: Color.popups.background
           border.color: Color.accent
@@ -724,7 +772,7 @@ Item {
 
             Text {
               width: parent.width
-              text: "TWO-OCTAVE RANGE"
+              text: "VOCAL RANGE"
               color: root.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
@@ -734,7 +782,7 @@ Item {
 
             Text {
               width: parent.width
-              text: "Set the register for both computer-key performance and inversion auditions."
+              text: "Choose any span from C2 to C6, up to 31 keys (2.5 octaves)."
               color: root.foreground
               opacity: 0.68
               font.family: Style.font.family
@@ -745,7 +793,7 @@ Item {
 
             Text {
               width: parent.width
-              text: root.rangeLabel
+              text: root.rangeLabel + "  ·  " + root.mappedKeyCount + " keys"
               color: root.activeColor
               font.family: Style.font.family
               font.pixelSize: Style.font.title
@@ -753,24 +801,82 @@ Item {
               horizontalAlignment: Text.AlignHCenter
             }
 
-            Row {
+            QQC.RangeSlider {
+              id: rangeSlider
               anchors.horizontalCenter: parent.horizontalCenter
-              spacing: Style.space(5)
+              width: parent.width - Style.space(48)
+              from: Model.MIN_RANGE_MIDI
+              to: Model.MAX_RANGE_MIDI
+              stepSize: 1
+              snapMode: QQC.RangeSlider.SnapAlways
+              first.value: root.rangeLowMidi
+              second.value: root.rangeHighMidi
+              first.onMoved: root.setRangeLower(Math.round(first.value))
+              second.onMoved: root.setRangeUpper(Math.round(second.value))
+              first.onPressedChanged: if (!first.pressed) root.persistMidiRange()
+              second.onPressedChanged: if (!second.pressed) root.persistMidiRange()
 
-              Repeater {
-                model: Model.MAX_BASE_OCTAVE - Model.MIN_BASE_OCTAVE + 1
-                delegate: Button {
-                  required property int index
-                  readonly property int octave: Model.MIN_BASE_OCTAVE + index
-                  text: Model.octaveRangeLabel(octave)
-                  selected: octave === root.baseOctave
-                  bordered: true
-                  foreground: root.foreground
-                  fontFamily: Style.font.family
-                  fontSize: Style.font.caption
-                  horizontalPadding: Style.space(9)
-                  onClicked: root.setBaseOctave(octave)
+              background: Rectangle {
+                x: rangeSlider.leftPadding
+                y: rangeSlider.topPadding + rangeSlider.availableHeight / 2 - height / 2
+                width: rangeSlider.availableWidth
+                height: Style.space(5)
+                radius: height / 2
+                color: root.quietColor
+
+                Rectangle {
+                  x: rangeSlider.first.visualPosition * parent.width
+                  width: (rangeSlider.second.visualPosition - rangeSlider.first.visualPosition) * parent.width
+                  height: parent.height
+                  radius: parent.radius
+                  color: root.activeColor
                 }
+              }
+
+              first.handle: Rectangle {
+                x: rangeSlider.leftPadding + rangeSlider.first.visualPosition * (rangeSlider.availableWidth - width)
+                y: rangeSlider.topPadding + rangeSlider.availableHeight / 2 - height / 2
+                implicitWidth: Style.space(24)
+                implicitHeight: implicitWidth
+                radius: width / 2
+                color: root.foreground
+                border.width: 3
+                border.color: root.activeColor
+              }
+
+              second.handle: Rectangle {
+                x: rangeSlider.leftPadding + rangeSlider.second.visualPosition * (rangeSlider.availableWidth - width)
+                y: rangeSlider.topPadding + rangeSlider.availableHeight / 2 - height / 2
+                implicitWidth: Style.space(24)
+                implicitHeight: implicitWidth
+                radius: width / 2
+                color: root.foreground
+                border.width: 3
+                border.color: root.activeColor
+              }
+            }
+
+            Row {
+              width: rangeSlider.width
+              anchors.horizontalCenter: parent.horizontalCenter
+
+              Text {
+                width: parent.width / 2
+                text: "C2"
+                color: root.foreground
+                opacity: 0.5
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                width: parent.width / 2
+                text: "C6"
+                color: root.foreground
+                opacity: 0.5
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                horizontalAlignment: Text.AlignRight
               }
             }
 

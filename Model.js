@@ -3,9 +3,11 @@
 var SECTORS = 12
 var SECTOR_DEG = 360 / SECTORS
 var TOP_DEG = -90
-var MIN_BASE_OCTAVE = 1
-var MAX_BASE_OCTAVE = 6
-var DEFAULT_BASE_OCTAVE = 3
+var MIN_RANGE_MIDI = 36
+var MAX_RANGE_MIDI = 84
+var MAX_RANGE_KEYS = 31
+var DEFAULT_RANGE_LOW = 48
+var DEFAULT_RANGE_HIGH = 72
 var MIDI_SHARP_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
 
 // Clockwise from 12 o'clock, matching the circle of fifths.
@@ -100,15 +102,8 @@ function pitchName(pitch) {
   return FLAT_NAMES[wrap(pitch, 12)]
 }
 
-function clampBaseOctave(octave) {
-  var value = Math.round(Number(octave))
-  if (!isFinite(value))
-    return DEFAULT_BASE_OCTAVE
-  return Math.max(MIN_BASE_OCTAVE, Math.min(MAX_BASE_OCTAVE, value))
-}
-
 function midiForC(octave) {
-  return (clampBaseOctave(octave) + 1) * 12
+  return (Math.round(Number(octave)) + 1) * 12
 }
 
 function midiNoteName(midi) {
@@ -116,9 +111,55 @@ function midiNoteName(midi) {
   return MIDI_SHARP_NAMES[wrap(note, 12)] + (Math.floor(note / 12) - 1)
 }
 
-function octaveRangeLabel(octave) {
-  var base = clampBaseOctave(octave)
-  return "C" + base + "–C" + (base + 2)
+function normalizeMidiRange(low, high, movedBound) {
+  var normalizedLow = Math.round(Number(low))
+  var normalizedHigh = Math.round(Number(high))
+  if (!isFinite(normalizedLow))
+    normalizedLow = DEFAULT_RANGE_LOW
+  if (!isFinite(normalizedHigh))
+    normalizedHigh = DEFAULT_RANGE_HIGH
+  normalizedLow = Math.max(MIN_RANGE_MIDI, Math.min(MAX_RANGE_MIDI, normalizedLow))
+  normalizedHigh = Math.max(MIN_RANGE_MIDI, Math.min(MAX_RANGE_MIDI, normalizedHigh))
+  if (normalizedLow > normalizedHigh) {
+    if (movedBound === "lower")
+      normalizedHigh = normalizedLow
+    else
+      normalizedLow = normalizedHigh
+  }
+  if (normalizedHigh - normalizedLow >= MAX_RANGE_KEYS) {
+    if (movedBound === "lower")
+      normalizedHigh = normalizedLow + MAX_RANGE_KEYS - 1
+    else
+      normalizedLow = normalizedHigh - MAX_RANGE_KEYS + 1
+  }
+  return {
+    low: normalizedLow,
+    high: normalizedHigh,
+    count: normalizedHigh - normalizedLow + 1,
+    label: midiNoteName(normalizedLow) + "–" + midiNoteName(normalizedHigh)
+  }
+}
+
+function midiAtOrAbove(pitch, minimum) {
+  return minimum + wrap(pitch - minimum, 12)
+}
+
+function midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, low, high) {
+  var range = normalizeMidiRange(low, high, "")
+  var root = noteAt(rootIndex)
+  var quality = qualityAt(qualityIndex)
+  var inversion = wrap(inversionIndex, quality.intervals.length)
+  var orderedPitches = []
+  for (var i = inversion; i < quality.intervals.length; i++)
+    orderedPitches.push(wrap(root.pitch + quality.intervals[i], 12))
+  for (var j = 0; j < inversion; j++)
+    orderedPitches.push(wrap(root.pitch + quality.intervals[j], 12))
+
+  var first = midiAtOrAbove(orderedPitches[0], range.low)
+  var notes = [first]
+  for (var noteIndex = 1; noteIndex < orderedPitches.length; noteIndex++)
+    notes.push(midiAtOrAbove(orderedPitches[noteIndex], notes[noteIndex - 1] + 1))
+  return notes[notes.length - 1] <= range.high ? notes : []
 }
 
 function sectorIndexForPitch(pitch) {
