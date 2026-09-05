@@ -97,7 +97,7 @@ Item {
   function dismiss() {
     root.close()
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "io.github.nkarl.omachords")
+      root.shell.hide((root.manifest && root.manifest.id) || "nkarl.omachords")
   }
 
   function toggle() {
@@ -110,7 +110,7 @@ Item {
   function configuredMidiRange() {
     var config = root.shell ? root.shell.shellConfig : null
     var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
-    var pluginId = (root.manifest && root.manifest.id) || "io.github.nkarl.omachords"
+    var pluginId = (root.manifest && root.manifest.id) || "nkarl.omachords"
     for (var i = 0; i < plugins.length; i++) {
       var entry = plugins[i]
       if (!entry || entry.id !== pluginId)
@@ -141,7 +141,7 @@ Item {
   function configuredKeyBindings() {
     var config = root.shell ? root.shell.shellConfig : null
     var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
-    var pluginId = (root.manifest && root.manifest.id) || "io.github.nkarl.omachords"
+    var pluginId = (root.manifest && root.manifest.id) || "nkarl.omachords"
     for (var i = 0; i < plugins.length; i++) {
       var entry = plugins[i]
       if (entry && entry.id === pluginId && entry.keyBindings !== undefined)
@@ -170,7 +170,7 @@ Item {
       return
     var config = root.shell.shellConfig
     var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
-    var pluginId = (root.manifest && root.manifest.id) || "io.github.nkarl.omachords"
+    var pluginId = (root.manifest && root.manifest.id) || "nkarl.omachords"
     var settings = {}
     for (var i = 0; i < plugins.length; i++) {
       var entry = plugins[i]
