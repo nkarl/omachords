@@ -759,16 +759,19 @@ Item {
 
             Text {
               width: parent.width
+              height: Style.space(24)
               text: root.selectedChord.label
               color: root.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.title
               font.bold: true
               horizontalAlignment: Text.AlignHCenter
+              verticalAlignment: Text.AlignVCenter
             }
 
             Text {
               width: parent.width
+              height: Style.space(22)
               text: root.selectedChord.noteNames
               color: root.foreground
               opacity: 0.72
@@ -776,10 +779,12 @@ Item {
               font.pixelSize: Style.font.body
               wrapMode: Text.WordWrap
               horizontalAlignment: Text.AlignHCenter
+              verticalAlignment: Text.AlignVCenter
             }
 
             Text {
               width: parent.width
+              height: Style.space(22)
               text: root.selectedChord.degreeNames
               visible: root.qualityIndex >= 0
               color: root.activeColor
@@ -788,10 +793,12 @@ Item {
               font.pixelSize: Style.font.body
               font.bold: true
               horizontalAlignment: Text.AlignHCenter
+              verticalAlignment: Text.AlignVCenter
             }
 
             Text {
               width: parent.width
+              height: Style.space(22)
               text: root.selectedChord.semitoneNames
               visible: root.qualityIndex >= 0
               color: root.foreground
@@ -799,6 +806,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               horizontalAlignment: Text.AlignHCenter
+              verticalAlignment: Text.AlignVCenter
             }
 
             Text {

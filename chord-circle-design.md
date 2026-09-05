@@ -89,6 +89,8 @@ The center of the circle displays:
 - The scale-degree coordinates, such as `1 · 3 · 5`.
 - The chromatic interval coordinates without a unit suffix, such as `0 · 4 · 7`.
 
+The chord title, tonal spellings, degree values, and chromatic values use fixed-height line boxes with explicit vertical centering so accidental glyph metrics cannot shift adjacent rows.
+
 Inversion may be displayed as a slash name such as `C/E` when a playback bass is selected, but it does not alter the nodes or edges.
 
 While computer keys are held, their pitch classes also appear as compact momentary numerical coordinates at their strict chromatic positions inside the tonal circle. The coordinates run clockwise from `0` at C at the top through `11` at B, and each visible number corresponds directly to the simultaneously activated outer chromatic sector. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
