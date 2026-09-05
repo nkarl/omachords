@@ -20,6 +20,16 @@ var FIFTHS = [
   { pitch: 5, label: "F", shortLabel: "F" }
 ]
 
+// Clockwise from 12 o'clock in strict semitone order.
+var CHROMATIC = [
+  { pitch: 0, label: "C" }, { pitch: 1, label: "D♭" },
+  { pitch: 2, label: "D" }, { pitch: 3, label: "E♭" },
+  { pitch: 4, label: "E" }, { pitch: 5, label: "F" },
+  { pitch: 6, label: "G♭" }, { pitch: 7, label: "G" },
+  { pitch: 8, label: "A♭" }, { pitch: 9, label: "A" },
+  { pitch: 10, label: "B♭" }, { pitch: 11, label: "B" }
+]
+
 var QUALITIES = [
   { id: "major", label: "Major", symbol: "", intervals: [0, 4, 7] },
   { id: "minor", label: "Minor", symbol: "m", intervals: [0, 3, 7] },
@@ -68,6 +78,10 @@ function wrap(value, length) {
 
 function noteAt(index) {
   return FIFTHS[wrap(index, FIFTHS.length)]
+}
+
+function chromaticNoteAt(index) {
+  return CHROMATIC[wrap(index, CHROMATIC.length)]
 }
 
 function qualityAt(index) {
@@ -220,6 +234,10 @@ function edges(pitches) {
 
 function sectorMidDeg(index) {
   return wrap(index, SECTORS) * SECTOR_DEG + TOP_DEG
+}
+
+function chromaticMidDeg(pitch) {
+  return wrap(pitch, SECTORS) * SECTOR_DEG + TOP_DEG
 }
 
 function degToRad(deg) {

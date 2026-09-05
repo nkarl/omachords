@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "local.chord-circle",
   "name": "Chord Circle",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Kyle",
   "license": "MIT",
-  "description": "Build and compare triads in a large circle-of-fifths overlay.",
+  "description": "Build and compare triads across tonal and chromatic pitch circles.",
   "kinds": ["overlay"],
   "keepLoaded": true,
   "entryPoints": {

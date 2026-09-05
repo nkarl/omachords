@@ -43,6 +43,8 @@ Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node sho
 
 The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
+An outer chromatic ring presents the same twelve pitch classes clockwise in strict semitone order from C through B. Every preset or held pitch activates its corresponding position on both rings, revealing tonal proximity and interval distance at once. Only the inner tonal space draws edges: chromatic ordering is visually self-evident, and omitting a second graph prevents unnecessary density. The chromatic ring consists of twelve annular blocks separated by small gaps. Inactive blocks use a quiet neutral shade; active blocks use a low-opacity accent shade rather than the white held-key color, preserving the inner ring as the primary focus.
+
 ## Chord state
 
 The UI owns a single state object independent of rendering and audio:
@@ -104,10 +106,13 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 ### Circular graph
 
-- Render twelve equally spaced circular nodes in fifths order without an annular sector band.
+- Render twelve equally spaced interactive circular nodes in fifths order.
+- Render a coordinated outer ring of twelve separated blocks in strict chromatic order.
 - Give every node a stable pitch-class identity, concise enharmonic label, and primary computer-key label.
 - Select a preset root with a primary click directly on its node.
 - Connect every pair of active nodes with an edge.
+- Draw graph edges only in the inner tonal circle; never connect outer chromatic blocks.
+- Activate the matching position on both rings for every preset or held pitch class.
 - Derive exactly three persistent accent-colored nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary white layer.
 - Keep edges behind nodes and labels.
 - Scale cleanly within the large overlay window without clipping labels or hit targets.

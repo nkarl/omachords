@@ -13,6 +13,14 @@ test("circle follows ascending fifths and contains every pitch class", () => {
   assert.equal(new Set(Array.from(model.FIFTHS, note => note.pitch)).size, 12)
 })
 
+test("chromatic ring follows strict semitone order", () => {
+  assert.deepEqual(Array.from(model.CHROMATIC, note => note.pitch), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+  assert.deepEqual(Array.from(model.CHROMATIC, note => note.label), ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"])
+  assert.equal(model.chromaticMidDeg(0), -90)
+  assert.equal(model.chromaticMidDeg(1), -60)
+  assert.equal(model.chromaticMidDeg(11), 240)
+})
+
 test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 0, 0).pitches), [0, 4, 7])
   assert.deepEqual(Array.from(model.chord(0, 1, 0).pitches), [0, 3, 7])

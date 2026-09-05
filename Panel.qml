@@ -43,6 +43,9 @@ Item {
   readonly property color gridColor: Util.alpha(root.foreground, 0.30)
   readonly property color quietColor: Util.alpha(root.foreground, 0.16)
   readonly property color activeColor: Color.accent
+  readonly property color shadeColor: Util.alpha(root.foreground, 0.07)
+  readonly property color shadeBorderColor: Util.alpha(root.foreground, 0.14)
+  readonly property color chromaticActiveColor: Util.alpha(root.activeColor, 0.34)
   readonly property var primaryKeyLabels: ["A", "W", "S", "E", "D", "F", "T", "G", "Y", "H", "U", "J"]
 
   function open(payloadJson) {
@@ -250,7 +253,9 @@ Item {
           property int hoverIndex: -1
           readonly property real cx: width / 2
           readonly property real cy: height / 2
-          readonly property real graphRadius: Math.min(width, height) / 2 - Style.space(48)
+          readonly property real outerRadius: Math.min(width, height) / 2 - Style.space(4)
+          readonly property real outerInnerRadius: outerRadius - Style.space(42)
+          readonly property real graphRadius: outerInnerRadius - Style.space(54)
 
           Canvas {
             id: graph
@@ -270,9 +275,28 @@ Item {
               }
             }
 
+            function drawChromaticBlock(ctx, index, fillColor) {
+              var gapDegrees = 1.15
+              var start = Model.degToRad(Model.chromaticMidDeg(index) - Model.SECTOR_DEG / 2 + gapDegrees / 2)
+              var end = Model.degToRad(Model.chromaticMidDeg(index) + Model.SECTOR_DEG / 2 - gapDegrees / 2)
+              ctx.beginPath()
+              ctx.arc(ring.cx, ring.cy, ring.outerRadius, start, end, false)
+              ctx.arc(ring.cx, ring.cy, ring.outerInnerRadius, end, start, true)
+              ctx.closePath()
+              ctx.fillStyle = fillColor
+              ctx.fill()
+              ctx.strokeStyle = root.shadeBorderColor
+              ctx.lineWidth = 1
+              ctx.stroke()
+            }
+
             onPaint: {
               var ctx = getContext("2d")
               ctx.clearRect(0, 0, width, height)
+              for (var pitch = 0; pitch < Model.CHROMATIC.length; pitch++) {
+                var chromaticActive = root.presetActive(pitch) || root.heldActive(pitch)
+                drawChromaticBlock(ctx, pitch, chromaticActive ? root.chromaticActiveColor : root.shadeColor)
+              }
               ctx.strokeStyle = root.quietColor
               ctx.lineWidth = 1.5
               ctx.beginPath()
@@ -280,6 +304,30 @@ Item {
               ctx.stroke()
               drawEdges(ctx, Model.edges(root.selectedChord.pitches), root.activeColor, 3)
               drawEdges(ctx, Model.edges(root.heldPitches), root.foreground, 4)
+            }
+          }
+
+          Repeater {
+            model: Model.CHROMATIC.length
+            delegate: Item {
+              required property int index
+              readonly property var note: Model.chromaticNoteAt(index)
+              readonly property bool active: root.presetActive(note.pitch) || root.heldActive(note.pitch)
+              readonly property real labelRadius: (ring.outerRadius + ring.outerInnerRadius) / 2
+              width: Style.space(40)
+              height: Style.space(24)
+              x: Model.polarX(ring.cx, labelRadius, Model.chromaticMidDeg(note.pitch)) - width / 2
+              y: Model.polarY(ring.cy, labelRadius, Model.chromaticMidDeg(note.pitch)) - height / 2
+
+              Text {
+                anchors.centerIn: parent
+                text: note.label
+                color: root.foreground
+                opacity: parent.active ? 0.68 : 0.32
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                font.bold: parent.active
+              }
             }
           }
 

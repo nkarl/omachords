@@ -1,8 +1,10 @@
 # Chord Circle
 
-Chord Circle is a large Omarchy Quattro overlay window for constructing and visualizing chords on a circle of fifths.
+Chord Circle is a large Omarchy Quattro overlay window for constructing and visualizing chords in two coordinated pitch spaces.
 
-Chord Circle is a large, centered, keyboard-exclusive overlay. A clicked root and the selected quality produce a persistent accent-colored triad, with the root distinguished by a white border. Independently, the same two-octave computer-keyboard layout as `max.piano` provides literal piano semantics: each held key adds a momentary white glow, white held-note edges, and sustained audio without replacing the selected triad. Repeated octaves share one node. Root, First, and Second audition concrete MIDI voicings through one persistent Rust/CPAL audio process.
+Chord Circle is a large, centered, keyboard-exclusive overlay. Its interactive inner circle orders pitch classes by fifths and draws chord graphs in tonal space. Its quieter outer ring orders the same pitch classes chromatically as twelve separated blocks, revealing semitone distance without adding another graph. A pitch selected by the preset or held at the keyboard appears in both spaces; outer-ring activation uses a muted accent shade so it remains subordinate to the inner graph.
+
+A clicked root and the selected quality produce a persistent accent-colored triad, with the root distinguished by a white border. Independently, the same two-octave computer-keyboard layout as `max.piano` provides literal piano semantics: each held key adds a momentary white glow, white held-note edges, and sustained audio without replacing the selected triad. Repeated octaves share one node. Root, First, and Second audition concrete MIDI voicings through one persistent Rust/CPAL audio process.
 
 White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`.
 
