@@ -21,7 +21,9 @@ Item {
   property int heldBass: -1
   property int rangeLowMidi: Model.DEFAULT_RANGE_LOW
   property int rangeHighMidi: Model.DEFAULT_RANGE_HIGH
+  property var pianoKeys: defaultPianoKeys.slice(0)
   property bool settingsOpen: false
+  property int bindingCaptureIndex: -1
   property string audioStatus: "Choose an inversion to audition"
 
   readonly property color foreground: Color.foreground
@@ -29,7 +31,7 @@ Item {
   readonly property string rangeLabel: selectedRange.label
   readonly property int mappedKeyCount: selectedRange.count
 
-  readonly property var pianoKeys: [
+  readonly property var defaultPianoKeys: [
     { key: Qt.Key_A, label: "A" }, { key: Qt.Key_W, label: "W" }, { key: Qt.Key_S, label: "S" },
     { key: Qt.Key_E, label: "E" }, { key: Qt.Key_D, label: "D" }, { key: Qt.Key_F, label: "F" },
     { key: Qt.Key_T, label: "T" }, { key: Qt.Key_G, label: "G" }, { key: Qt.Key_Y, label: "Y" },
@@ -119,13 +121,35 @@ Item {
     return Model.normalizeMidiRange(Model.DEFAULT_RANGE_LOW, Model.DEFAULT_RANGE_HIGH, "")
   }
 
+  function normalizedKeyBindings(value) {
+    return Model.normalizeKeyBindings(value, root.defaultPianoKeys)
+  }
+
+  function configuredKeyBindings() {
+    var config = root.shell ? root.shell.shellConfig : null
+    var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
+    var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
+    for (var i = 0; i < plugins.length; i++) {
+      var entry = plugins[i]
+      if (entry && entry.id === pluginId && entry.keyBindings !== undefined)
+        return root.normalizedKeyBindings(entry.keyBindings)
+    }
+    return root.defaultPianoKeys.slice(0)
+  }
+
+  function sameKeyBindings(first, second) {
+    return Model.sameKeyBindings(first, second)
+  }
+
   function loadSettings() {
     var range = root.configuredMidiRange()
-    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi)
+    var bindings = root.configuredKeyBindings()
+    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi && root.sameKeyBindings(bindings, root.pianoKeys))
       return
     root.silenceForRangeChange()
     root.rangeLowMidi = range.low
     root.rangeHighMidi = range.high
+    root.pianoKeys = bindings
   }
 
   function persistMidiRange() {
@@ -146,7 +170,53 @@ Item {
     }
     settings.rangeLowMidi = root.rangeLowMidi
     settings.rangeHighMidi = root.rangeHighMidi
+    settings.keyBindings = root.pianoKeys
     root.shell.updateEntryInline(pluginId, settings)
+  }
+
+  function keyLabelForEvent(event) {
+    if (event.key === Qt.Key_Space)
+      return "Space"
+    var label = event.text || ""
+    if (label.length === 1)
+      return label.toUpperCase()
+    return "Key " + event.key
+  }
+
+  function isBindableKey(key) {
+    return key !== Qt.Key_unknown && key !== Qt.Key_Escape && key !== Qt.Key_Shift && key !== Qt.Key_Control && key !== Qt.Key_Alt && key !== Qt.Key_Meta && key !== Qt.Key_AltGr
+  }
+
+  function captureBinding(event) {
+    if (root.bindingCaptureIndex < 0 || event.isAutoRepeat)
+      return
+    if (event.key === Qt.Key_Escape) {
+      root.bindingCaptureIndex = -1
+      return
+    }
+    if (!root.isBindableKey(event.key)) {
+      root.audioStatus = "Choose a non-modifier key"
+      return
+    }
+    var replacement = { key: event.key, label: root.keyLabelForEvent(event) }
+    root.pianoKeys = Model.rebindKey(root.pianoKeys, root.bindingCaptureIndex, replacement)
+    root.bindingCaptureIndex = -1
+    root.audioStatus = "Keyboard binding updated"
+    root.persistMidiRange()
+  }
+
+  function resetKeyBindings() {
+    root.pianoKeys = root.defaultPianoKeys.slice(0)
+    root.bindingCaptureIndex = -1
+    root.audioStatus = "Keyboard bindings reset"
+    root.persistMidiRange()
+  }
+
+  function keyMapSummary() {
+    var labels = []
+    for (var i = 0; i < root.mappedKeyCount; i++)
+      labels.push(root.pianoKeys[i].label)
+    return labels.join(" ")
   }
 
   function applyMidiRange(range) {
@@ -172,6 +242,7 @@ Item {
   }
 
   function closeSettings() {
+    root.bindingCaptureIndex = -1
     root.settingsOpen = false
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -339,7 +410,9 @@ Item {
 
       Keys.onPressed: function(event) {
         if (root.settingsOpen) {
-          if (event.key === Qt.Key_Escape)
+          if (root.bindingCaptureIndex >= 0)
+            root.captureBinding(event)
+          else if (event.key === Qt.Key_Escape)
             root.closeSettings()
           event.accepted = true
           return
@@ -721,7 +794,7 @@ Item {
 
         Text {
           width: parent.width
-          text: "Keys low → high: A W S E D F T G Y H U J K O L P ; ' [ Z ] X \\ C V B N M , . /"
+          text: "Keys low → high: " + root.keyMapSummary()
           color: root.foreground
           opacity: 0.45
           font.family: Style.font.family
@@ -754,7 +827,7 @@ Item {
         Rectangle {
           anchors.centerIn: parent
           width: Math.min(parent.width - Style.space(64), Style.space(680))
-          height: Style.space(350)
+          height: Style.space(590)
           radius: Math.max(Style.cornerRadius, Style.space(12))
           color: Color.popups.background
           border.color: Color.accent
@@ -877,6 +950,54 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 horizontalAlignment: Text.AlignRight
+              }
+            }
+
+            Row {
+              width: parent.width
+
+              Text {
+                width: parent.width - resetBindings.width
+                text: root.bindingCaptureIndex >= 0 ? "Press a replacement key · duplicates swap positions" : "KEYBOARD MAP · select a slot to rebind"
+                color: root.foreground
+                opacity: root.bindingCaptureIndex >= 0 ? 0.9 : 0.6
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                verticalAlignment: Text.AlignVCenter
+              }
+
+              Button {
+                id: resetBindings
+                text: "Reset"
+                bordered: true
+                foreground: root.foreground
+                fontFamily: Style.font.family
+                fontSize: Style.font.caption
+                onClicked: root.resetKeyBindings()
+              }
+            }
+
+            Grid {
+              anchors.horizontalCenter: parent.horizontalCenter
+              columns: 8
+              spacing: Style.space(5)
+
+              Repeater {
+                model: root.pianoKeys.length
+                delegate: Button {
+                  required property int index
+                  readonly property bool activeSlot: index < root.mappedKeyCount
+                  text: (index + 1) + " · " + (root.bindingCaptureIndex === index ? "…" : root.pianoKeys[index].label)
+                  selected: root.bindingCaptureIndex === index
+                  bordered: true
+                  foreground: root.foreground
+                  opacity: activeSlot ? 1 : 0.42
+                  fontFamily: Style.font.family
+                  fontSize: Style.font.caption
+                  horizontalPadding: Style.space(8)
+                  onClicked: root.bindingCaptureIndex = index
+                }
               }
             }
 

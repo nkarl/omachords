@@ -31,6 +31,23 @@ test("vocal ranges use scientific pitch notation and a 31-key maximum", () => {
   assert.deepEqual({ ...model.normalizeMidiRange(20, 100, "lower") }, { low: 36, high: 66, count: 31, label: "C2–F♯4" })
 })
 
+test("keyboard rebinding replaces unused keys and swaps duplicates", () => {
+  const defaults = [{ key: 65, label: "A" }, { key: 87, label: "W" }, { key: 83, label: "S" }]
+  const replaced = Array.from(model.rebindKey(defaults, 0, { key: 90, label: "Z" }))
+  assert.deepEqual(replaced.map(binding => ({ ...binding })), [{ key: 90, label: "Z" }, { key: 87, label: "W" }, { key: 83, label: "S" }])
+  const swapped = Array.from(model.rebindKey(defaults, 0, { key: 83, label: "S" }))
+  assert.deepEqual(swapped.map(binding => ({ ...binding })), [{ key: 83, label: "S" }, { key: 87, label: "W" }, { key: 65, label: "A" }])
+  assert.equal(new Set(swapped.map(binding => binding.key)).size, 3)
+})
+
+test("persisted keyboard bindings reject malformed or duplicate maps", () => {
+  const defaults = [{ key: 65, label: "A" }, { key: 87, label: "W" }]
+  const valid = model.normalizeKeyBindings([{ key: 90, label: "Z" }, { key: 88, label: "X" }], defaults)
+  assert.deepEqual(Array.from(valid, binding => ({ ...binding })), [{ key: 90, label: "Z" }, { key: 88, label: "X" }])
+  assert.deepEqual(Array.from(model.normalizeKeyBindings([{ key: 90, label: "Z" }], defaults)), defaults)
+  assert.deepEqual(Array.from(model.normalizeKeyBindings([{ key: 90, label: "Z" }, { key: 90, label: "Z" }], defaults)), defaults)
+})
+
 test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 0, 0).pitches), [0, 4, 7])
   assert.deepEqual(Array.from(model.chord(0, 1, 0).pitches), [0, 3, 7])

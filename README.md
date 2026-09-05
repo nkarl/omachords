@@ -10,6 +10,8 @@ The Range settings modal provides lower and upper semitone handles between C2 an
 
 The 31 notes map in ascending semitone order to `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. Only the first key for each note in the selected range is active.
 
+Every mapping slot can be rebound from the Range settings modal. Select a numbered slot and press its replacement key. Assigning a key that is already used swaps the two slots, preserving a deterministic one-key-to-one-note map. Custom bindings persist with the range settings, while Reset restores the original 31-key layout.
+
 Keyboard input never cycles the root, quality, or inversion. Each mapped key always represents one fixed note, and repeatedly playing the same combination yields the same pitch-class set and triad identification. Physical press and release events update the held set exactly once; Qt-marked auto-repeat events and duplicate transitions are ignored.
 
 ## Development

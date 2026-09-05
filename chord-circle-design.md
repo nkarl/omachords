@@ -60,6 +60,7 @@ held.pitchClasses      unique pitch classes derived modulo 12
 held.bass              pitch class of the lowest held keyboard note
 settings.rangeLowMidi  inclusive lower note of the performance range
 settings.rangeHighMidi inclusive upper note of the performance range
+settings.keyBindings   ordered one-to-one map of physical keys to range positions
 revision               monotonically increasing change identifier
 ```
 
@@ -68,6 +69,8 @@ Selecting a root or quality updates the persistent triad atomically. Choosing an
 Keyboard input preserves Quick Piano's physical layout and extends it to 31 contiguous semitones. Notes ascend across `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
 
 The settings modal exposes independent lower and upper semitone handles over the global C2–C6 span. The selected range is inclusive and limited to 31 notes, equivalent to 2.5 octaves; moving either handle past that width shifts the other bound. C3–C5 is the default, and selecting fewer notes disables unused keys at the end of the 31-key mapping. Opening the modal silences current computer-key notes and any timed audition before remapping them, preventing old-register audio or stale MIDI notes. The plugin persists `rangeLowMidi` and `rangeHighMidi` in its top-level `shell.json` entry and migrates the earlier `keyboardBaseOctave` setting when present.
+
+The same modal exposes all 31 ordered key slots for rebinding. Selecting a slot captures the next non-modifier key; if that key already belongs to another slot, the bindings swap rather than creating an ambiguous duplicate. Inactive slots remain editable for later range expansion. The `keyBindings` array persists with the range, malformed or duplicate saved maps fall back atomically to the default layout, and Reset restores all 31 defaults.
 
 No musical selection cycles from the keyboard: a mapped piano key always resolves to one fixed note, and repeating the same combination always produces the same pitch-class set and chord identity. Root, quality, and inversion presets are changed with the pointer controls rather than cycling shortcuts.
 
@@ -149,6 +152,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Provide visible hover and keyboard-focus states.
 - Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
 - Provide a dual-bound semitone range slider whose persisted choice and active key count are visible from the main overlay.
+- Allow every keyboard slot to be rebound, swap duplicate assignments, and restore the complete default map.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
@@ -185,6 +189,7 @@ Pressing an inversion button sends the current preset's complete MIDI voicing to
 - Root selection across all twelve fifths-ordered nodes.
 - Quality transitions and inversion audition commands.
 - Piano key press, release, auto-repeat suppression, and duplicate-octave handling.
+- Keyboard binding capture, duplicate-key swapping, reset, validation, and persistence.
 - Enharmonic node labels mapped to a single pitch identity.
 - Triad construction for every root and supported quality.
 - Inversion-invariant pitch-class graphs and inversion-specific bass values.

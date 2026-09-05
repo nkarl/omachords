@@ -162,6 +162,47 @@ function midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, low, high) 
   return notes[notes.length - 1] <= range.high ? notes : []
 }
 
+function normalizeKeyBindings(value, defaults) {
+  var fallback = (defaults || []).slice(0)
+  if (!Array.isArray(value) || value.length !== fallback.length)
+    return fallback
+  var seen = {}
+  var result = []
+  for (var i = 0; i < value.length; i++) {
+    var binding = value[i]
+    if (!binding || !isFinite(Number(binding.key)) || typeof binding.label !== "string" || binding.label.length === 0 || seen[String(binding.key)])
+      return fallback
+    seen[String(binding.key)] = true
+    result.push({ key: Math.round(Number(binding.key)), label: binding.label })
+  }
+  return result
+}
+
+function sameKeyBindings(first, second) {
+  if (!first || !second || first.length !== second.length)
+    return false
+  for (var i = 0; i < first.length; i++)
+    if (first[i].key !== second[i].key || first[i].label !== second[i].label)
+      return false
+  return true
+}
+
+function rebindKey(bindings, index, replacement) {
+  if (!bindings || index < 0 || index >= bindings.length || !replacement)
+    return bindings
+  var next = bindings.slice(0)
+  var duplicate = -1
+  for (var i = 0; i < next.length; i++)
+    if (i !== index && next[i].key === replacement.key) {
+      duplicate = i
+      break
+    }
+  if (duplicate >= 0)
+    next[duplicate] = next[index]
+  next[index] = { key: replacement.key, label: replacement.label }
+  return next
+}
+
 function sectorIndexForPitch(pitch) {
   var pc = wrap(pitch, 12)
   for (var i = 0; i < FIFTHS.length; i++)
