@@ -77,6 +77,7 @@ Item {
   readonly property color transparentAccent: Util.alpha(root.activeColor, 0.0)
 
   function open(payloadJson) {
+    root.onDemandFocus = false
     root.opened = true
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -87,6 +88,7 @@ Item {
     root.revision += 1
     engine.stop(root.revision)
     root.opened = false
+    root.onDemandFocus = false
   }
 
   function dismiss() {
@@ -145,18 +147,6 @@ Item {
     return root.defaultPianoKeys.slice(0)
   }
 
-  function configuredOnDemandFocus() {
-    var config = root.shell ? root.shell.shellConfig : null
-    var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
-    var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
-    for (var i = 0; i < plugins.length; i++) {
-      var entry = plugins[i]
-      if (entry && entry.id === pluginId && entry.onDemandFocus !== undefined)
-        return entry.onDemandFocus === true
-    }
-    return false
-  }
-
   function sameKeyBindings(first, second) {
     return Model.sameKeyBindings(first, second)
   }
@@ -164,14 +154,12 @@ Item {
   function loadSettings() {
     var range = root.configuredMidiRange()
     var bindings = root.configuredKeyBindings()
-    var onDemand = root.configuredOnDemandFocus()
-    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi && root.sameKeyBindings(bindings, root.pianoKeys) && onDemand === root.onDemandFocus)
+    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi && root.sameKeyBindings(bindings, root.pianoKeys))
       return
     root.silenceForRangeChange()
     root.rangeLowMidi = range.low
     root.rangeHighMidi = range.high
     root.pianoKeys = bindings
-    root.onDemandFocus = onDemand
   }
 
   function persistSettings() {
@@ -186,14 +174,13 @@ Item {
       if (!entry || entry.id !== pluginId)
         continue
       for (var key in entry)
-        if (key !== "id" && key !== "keyboardBaseOctave")
+        if (key !== "id" && key !== "keyboardBaseOctave" && key !== "onDemandFocus")
           settings[key] = entry[key]
       break
     }
     settings.rangeLowMidi = root.rangeLowMidi
     settings.rangeHighMidi = root.rangeHighMidi
     settings.keyBindings = root.pianoKeys
-    settings.onDemandFocus = root.onDemandFocus
     root.shell.updateEntryInline(pluginId, settings)
   }
 
@@ -204,7 +191,6 @@ Item {
     root.silenceForRangeChange()
     root.onDemandFocus = next
     root.audioStatus = next ? "On-demand focus enabled" : "Exclusive focus enabled"
-    root.persistSettings()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 

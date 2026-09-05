@@ -63,7 +63,7 @@ held.bass              pitch class of the lowest held keyboard note
 settings.rangeLowMidi  inclusive lower note of the performance range
 settings.rangeHighMidi inclusive upper note of the performance range
 settings.keyBindings   ordered one-to-one map of physical keys to range positions
-settings.onDemandFocus whether keyboard focus can move to another window while the overlay remains open
+session.onDemandFocus  temporary permission for keyboard focus to move while this overlay session remains open
 revision               monotonically increasing change identifier
 ```
 
@@ -163,7 +163,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
 - Show the current range and active key count as non-interactive indicator text beside a dedicated settings button, then provide a dual-bound semitone range slider inside the settings modal.
 - Allow every keyboard slot to be rebound, swap duplicate assignments, and restore the complete default map.
-- Allow persisted switching between exclusive and on-demand Wayland keyboard focus, releasing held notes whenever an on-demand overlay loses focus.
+- Allow session-only switching between exclusive and on-demand Wayland keyboard focus, releasing held notes whenever an on-demand overlay loses focus and restoring Exclusive mode whenever the overlay closes or starts fresh.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
