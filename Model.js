@@ -288,7 +288,7 @@ function chord(rootIndex, qualityIndex, inversionIndex, family) {
     noteNames: spellings.join(" · "),
     degrees: quality.degrees.slice(0),
     degreeNames: quality.degrees.join(" · "),
-    semitoneNames: quality.intervals.map(interval => interval + 1).join(" · ")
+    semitoneNames: quality.intervals.join(" · ")
   }
 }
 
