@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "local.chord-circle",
   "name": "Chord Circle",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "author": "Kyle",
   "license": "MIT",
-  "description": "Build and compare triads across tonal and chromatic pitch circles.",
+  "description": "Build and compare triads and seventh chords across tonal and chromatic pitch circles.",
   "kinds": ["overlay"],
   "keepLoaded": true,
   "entryPoints": {

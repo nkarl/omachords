@@ -55,6 +55,23 @@ test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 3, 0).pitches), [0, 4, 8])
 })
 
+test("comprehensive seventh qualities produce explicit C tetrads", () => {
+  const formulas = [
+    [0, 4, 7, 11], [0, 4, 7, 10], [0, 3, 7, 10], [0, 3, 6, 10],
+    [0, 3, 6, 9], [0, 4, 8, 11], [0, 3, 7, 11]
+  ]
+  assert.equal(model.SEVENTH_QUALITIES.length, 7)
+  for (let qualityIndex = 0; qualityIndex < formulas.length; qualityIndex += 1)
+    assert.deepEqual(Array.from(model.chord(0, qualityIndex, 0, "seventh").pitches), formulas[qualityIndex])
+  assert.equal(model.chord(0, 0, 0, "seventh").label, "Cmaj7")
+  assert.equal(model.chord(0, 1, 0, "seventh").label, "C7")
+  assert.equal(model.chord(0, 2, 0, "seventh").label, "Cm7")
+  assert.equal(model.chord(0, 3, 0, "seventh").label, "Cm7♭5")
+  assert.equal(model.chord(0, 4, 0, "seventh").label, "Cdim7")
+  assert.equal(model.chord(0, 5, 0, "seventh").label, "CaugMaj7")
+  assert.equal(model.chord(0, 6, 0, "seventh").label, "CmMaj7")
+})
+
 test("exclusive quality controls can toggle the active choice off", () => {
   assert.equal(model.toggleExclusiveIndex(0, 0), -1)
   assert.equal(model.toggleExclusiveIndex(-1, 0), 0)
@@ -72,6 +89,49 @@ test("chords expose scale-degree and semitone analysis", () => {
   assert.equal(model.chord(0, 1, 0).degreeNames, "1 · ♭3 · 5")
   assert.equal(model.chord(0, 2, 0).degreeNames, "1 · ♭3 · ♭5")
   assert.equal(model.chord(0, 3, 0).degreeNames, "1 · 3 · ♯5")
+  const minorSeventh = model.chord(3, 2, 0, "seventh")
+  assert.equal(minorSeventh.label, "Am7")
+  assert.equal(minorSeventh.noteNames, "A · C · E · G")
+  assert.equal(minorSeventh.degreeNames, "1 · ♭3 · 5 · ♭7")
+  assert.equal(minorSeventh.semitoneNames, "0 · 3 · 7 · 10")
+})
+
+test("seventh chords support third inversion and four-note recognition", () => {
+  const third = model.chord(0, 0, 3, "seventh")
+  assert.equal(third.label, "Cmaj7/B")
+  assert.equal(third.bass, 11)
+  assert.equal(third.inversionLabel, "Third")
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 3, 48, "seventh")), [59, 60, 64, 67])
+  assert.deepEqual(Array.from(model.midiVoicingInRange(0, 0, 3, 48, 72, "seventh")), [59, 60, 64, 67])
+  assert.equal(model.identifyChord([9, 0, 4, 7], 9).label, "Am7")
+  assert.equal(model.identifyChord([11, 0, 4, 7], 11).label, "Cmaj7/B")
+  assert.equal(model.edges([0, 4, 7, 11]).length, 6)
+})
+
+test("every seventh quality and root produces four distinct pitches", () => {
+  for (let rootIndex = 0; rootIndex < 12; rootIndex += 1) {
+    for (let qualityIndex = 0; qualityIndex < model.SEVENTH_QUALITIES.length; qualityIndex += 1) {
+      const chord = model.chord(rootIndex, qualityIndex, 0, "seventh")
+      assert.equal(chord.pitches.length, 4)
+      assert.equal(new Set(chord.pitches).size, 4)
+      assert.equal(chord.spellings.length, 4)
+    }
+  }
+})
+
+test("every seventh inversion fits atomically inside a 31-key range", () => {
+  for (let rootIndex = 0; rootIndex < 12; rootIndex += 1) {
+    for (let qualityIndex = 0; qualityIndex < model.SEVENTH_QUALITIES.length; qualityIndex += 1) {
+      for (let inversionIndex = 0; inversionIndex < 4; inversionIndex += 1) {
+        const notes = Array.from(model.midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, 36, 66, "seventh"))
+        assert.equal(notes.length, 4)
+        assert.ok(notes[0] >= 36)
+        assert.ok(notes[3] <= 66)
+        assert.ok(notes[0] < notes[1] && notes[1] < notes[2] && notes[2] < notes[3])
+        assert.equal(model.wrap(notes[0], 12), model.chord(rootIndex, qualityIndex, inversionIndex, "seventh").bass)
+      }
+    }
+  }
 })
 
 test("every root and quality produces three distinct formula pitches", () => {

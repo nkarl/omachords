@@ -37,16 +37,27 @@ var CHROMATIC = [
 ]
 
 var QUALITIES = [
-  { id: "major", label: "Major", symbol: "", intervals: [0, 4, 7], degrees: ["1", "3", "5"] },
-  { id: "minor", label: "Minor", symbol: "m", intervals: [0, 3, 7], degrees: ["1", "♭3", "5"] },
-  { id: "diminished", label: "Diminished", symbol: "dim", intervals: [0, 3, 6], degrees: ["1", "♭3", "♭5"] },
-  { id: "augmented", label: "Augmented", symbol: "aug", intervals: [0, 4, 8], degrees: ["1", "3", "♯5"] }
+  { id: "major", label: "Major", shortLabel: "Major", symbol: "", intervals: [0, 4, 7], degrees: ["1", "3", "5"], triadQualityIndex: 0 },
+  { id: "minor", label: "Minor", shortLabel: "Minor", symbol: "m", intervals: [0, 3, 7], degrees: ["1", "♭3", "5"], triadQualityIndex: 1 },
+  { id: "diminished", label: "Diminished", shortLabel: "Dim", symbol: "dim", intervals: [0, 3, 6], degrees: ["1", "♭3", "♭5"], triadQualityIndex: 2 },
+  { id: "augmented", label: "Augmented", shortLabel: "Aug", symbol: "aug", intervals: [0, 4, 8], degrees: ["1", "3", "♯5"], triadQualityIndex: 3 }
+]
+
+var SEVENTH_QUALITIES = [
+  { id: "major7", label: "Major seventh", shortLabel: "maj7", symbol: "maj7", intervals: [0, 4, 7, 11], degrees: ["1", "3", "5", "7"], triadQualityIndex: 0 },
+  { id: "dominant7", label: "Dominant seventh", shortLabel: "7", symbol: "7", intervals: [0, 4, 7, 10], degrees: ["1", "3", "5", "♭7"], triadQualityIndex: 0 },
+  { id: "minor7", label: "Minor seventh", shortLabel: "m7", symbol: "m7", intervals: [0, 3, 7, 10], degrees: ["1", "♭3", "5", "♭7"], triadQualityIndex: 1 },
+  { id: "halfDiminished7", label: "Half-diminished seventh", shortLabel: "m7♭5", symbol: "m7♭5", intervals: [0, 3, 6, 10], degrees: ["1", "♭3", "♭5", "♭7"], triadQualityIndex: 2 },
+  { id: "diminished7", label: "Diminished seventh", shortLabel: "dim7", symbol: "dim7", intervals: [0, 3, 6, 9], degrees: ["1", "♭3", "♭5", "𝄫7"], triadQualityIndex: 2 },
+  { id: "augmentedMajor7", label: "Augmented major seventh", shortLabel: "augMaj7", symbol: "augMaj7", intervals: [0, 4, 8, 11], degrees: ["1", "3", "♯5", "7"], triadQualityIndex: 3 },
+  { id: "minorMajor7", label: "Minor-major seventh", shortLabel: "mMaj7", symbol: "mMaj7", intervals: [0, 3, 7, 11], degrees: ["1", "♭3", "5", "7"], triadQualityIndex: 1 }
 ]
 
 var INVERSIONS = [
   { id: "root", label: "Root", shortLabel: "R" },
   { id: "first", label: "First", shortLabel: "1st" },
-  { id: "second", label: "Second", shortLabel: "2nd" }
+  { id: "second", label: "Second", shortLabel: "2nd" },
+  { id: "third", label: "Third", shortLabel: "3rd" }
 ]
 
 var FLAT_NAMES = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"]
@@ -90,8 +101,13 @@ function chromaticNoteAt(index) {
   return CHROMATIC[wrap(index, CHROMATIC.length)]
 }
 
-function qualityAt(index) {
-  return QUALITIES[wrap(index, QUALITIES.length)]
+function qualitiesFor(family) {
+  return family === "seventh" ? SEVENTH_QUALITIES : QUALITIES
+}
+
+function qualityAt(index, family) {
+  var qualities = qualitiesFor(family)
+  return qualities[wrap(index, qualities.length)]
 }
 
 function toggleExclusiveIndex(current, requested) {
@@ -148,10 +164,10 @@ function midiAtOrAbove(pitch, minimum) {
   return minimum + wrap(pitch - minimum, 12)
 }
 
-function midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, low, high) {
+function midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, low, high, family) {
   var range = normalizeMidiRange(low, high, "")
   var root = noteAt(rootIndex)
-  var quality = qualityAt(qualityIndex)
+  var quality = qualityAt(qualityIndex, family)
   var inversion = wrap(inversionIndex, quality.intervals.length)
   var orderedPitches = []
   for (var i = inversion; i < quality.intervals.length; i++)
@@ -215,13 +231,39 @@ function sectorIndexForPitch(pitch) {
   return 0
 }
 
-function chord(rootIndex, qualityIndex, inversionIndex) {
-  var root = noteAt(rootIndex)
-  var quality = qualityAt(qualityIndex)
+var NATURAL_PITCHES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+var LETTERS = ["C", "D", "E", "F", "G", "A", "B"]
+
+function spellDegree(rootName, degree, pitch) {
+  var rootLetter = rootName.charAt(0)
+  var rootLetterIndex = LETTERS.indexOf(rootLetter)
+  var targetLetter = LETTERS[wrap(rootLetterIndex + degree - 1, LETTERS.length)]
+  var difference = wrap(pitch - NATURAL_PITCHES[targetLetter], 12)
+  if (difference > 6)
+    difference -= 12
+  var accidental = difference === -2 ? "𝄫" : difference === -1 ? "♭" : difference === 1 ? "♯" : difference === 2 ? "𝄪" : ""
+  return targetLetter + accidental
+}
+
+function chordSpellings(rootIndex, quality, family) {
   var normalizedRootIndex = wrap(rootIndex, FIFTHS.length)
-  var normalizedQualityIndex = wrap(qualityIndex, QUALITIES.length)
-  var inversion = wrap(inversionIndex, INVERSIONS.length)
-  var spellings = TRIAD_SPELLINGS[normalizedQualityIndex][normalizedRootIndex]
+  var spellings = TRIAD_SPELLINGS[quality.triadQualityIndex][normalizedRootIndex].slice(0)
+  if (family === "seventh") {
+    var rootPitch = noteAt(normalizedRootIndex).pitch
+    spellings.push(spellDegree(spellings[0], 7, wrap(rootPitch + quality.intervals[3], 12)))
+  }
+  return spellings
+}
+
+function chord(rootIndex, qualityIndex, inversionIndex, family) {
+  var normalizedFamily = family === "seventh" ? "seventh" : "triad"
+  var root = noteAt(rootIndex)
+  var qualities = qualitiesFor(normalizedFamily)
+  var quality = qualityAt(qualityIndex, normalizedFamily)
+  var normalizedRootIndex = wrap(rootIndex, FIFTHS.length)
+  var normalizedQualityIndex = wrap(qualityIndex, qualities.length)
+  var inversion = wrap(inversionIndex, quality.intervals.length)
+  var spellings = chordSpellings(normalizedRootIndex, quality, normalizedFamily)
   var pitches = []
   for (var i = 0; i < quality.intervals.length; i++)
     pitches.push(wrap(root.pitch + quality.intervals[i], 12))
@@ -234,6 +276,7 @@ function chord(rootIndex, qualityIndex, inversionIndex) {
   return {
     rootIndex: normalizedRootIndex,
     rootPitch: root.pitch,
+    family: normalizedFamily,
     qualityIndex: normalizedQualityIndex,
     inversionIndex: inversion,
     pitches: pitches,
@@ -242,7 +285,7 @@ function chord(rootIndex, qualityIndex, inversionIndex) {
     qualityLabel: quality.label,
     inversionLabel: inversionAt(inversion).label,
     spellings: spellings.slice(0),
-    noteNames: spellings[0] + " · " + spellings[1] + " · " + spellings[2],
+    noteNames: spellings.join(" · "),
     degrees: quality.degrees.slice(0),
     degreeNames: quality.degrees.join(" · "),
     semitoneNames: quality.intervals.join(" · ")
@@ -268,20 +311,31 @@ function samePitchSet(a, b) {
   return true
 }
 
-function identifyTriad(pitches, bass) {
-  if (!pitches || pitches.length !== 3)
+function identifyChord(pitches, bass) {
+  if (!pitches || (pitches.length !== 3 && pitches.length !== 4))
     return null
+  var family = pitches.length === 4 ? "seventh" : "triad"
+  var qualities = qualitiesFor(family)
+  var fallback = null
   for (var rootIndex = 0; rootIndex < FIFTHS.length; rootIndex++)
-    for (var qualityIndex = 0; qualityIndex < QUALITIES.length; qualityIndex++) {
-      var candidate = chord(rootIndex, qualityIndex, 0)
+    for (var qualityIndex = 0; qualityIndex < qualities.length; qualityIndex++) {
+      var candidate = chord(rootIndex, qualityIndex, 0, family)
       if (samePitchSet(candidate.pitches, pitches)) {
         for (var inversion = 0; inversion < candidate.pitches.length; inversion++)
-          if (candidate.pitches[inversion] === bass)
-            return chord(rootIndex, qualityIndex, inversion)
-        return candidate
+          if (candidate.pitches[inversion] === bass) {
+            var interpreted = chord(rootIndex, qualityIndex, inversion, family)
+            if (candidate.rootPitch === bass)
+              return interpreted
+            if (!fallback)
+              fallback = interpreted
+          }
       }
     }
-  return null
+  return fallback
+}
+
+function identifyTriad(pitches, bass) {
+  return pitches && pitches.length === 3 ? identifyChord(pitches, bass) : null
 }
 
 function pitchSetNames(pitches) {
@@ -309,9 +363,9 @@ function heldPitchState(entries) {
   }
 }
 
-function midiVoicing(rootIndex, qualityIndex, inversionIndex, baseMidi) {
+function midiVoicing(rootIndex, qualityIndex, inversionIndex, baseMidi, family) {
   var root = noteAt(rootIndex)
-  var quality = qualityAt(qualityIndex)
+  var quality = qualityAt(qualityIndex, family)
   var inversion = wrap(inversionIndex, quality.intervals.length)
   var rangeBase = baseMidi === undefined ? midiForC(4) : Math.round(Number(baseMidi))
   var rootMidi = rangeBase + root.pitch

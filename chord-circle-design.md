@@ -13,7 +13,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 ## Goals
 
 - Make the internal interval structure of a chord immediately visible.
-- Select a root and triad quality through direct controls, then audition root position, first inversion, or second inversion.
+- Select a root, triad or seventh family, and explicit quality through direct controls, then audition every valid inversion.
 - Use up to 31 computer keys as a contiguous chromatic keyboard range to activate pitch classes while keys are held.
 - Show similarities and differences between consecutive chords.
 - Play all active notes as one synchronized chord through a stable audio stream.
@@ -31,7 +31,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 
 ## Core musical model
 
-The canonical preset state is a root pitch class and one of four triad qualities. The model derives exactly three persistent pitch classes from that selection. Keyboard state is independent and momentary: currently held piano keys add a second visual layer without replacing or modifying the preset. Root position, first inversion, and second inversion are playback choices for the preset rather than structural graph modes. Supporting saved free-form pitch sets, seventh-chord presets, extensions, and clusters is deferred.
+The canonical preset state is a root pitch class, a chord family, and an explicit quality. Triads derive three pitch classes from Major, Minor, Diminished, or Augmented. Seventh chords derive four pitch classes from Major seventh, Dominant seventh, Minor seventh, Half-diminished seventh, Diminished seventh, Augmented major seventh, or Minor-major seventh. Keyboard state is independent and momentary: currently held piano keys add a second visual layer without replacing or modifying the preset. Inversions are playback choices rather than structural graph modes. Supporting saved free-form pitch sets, extensions, and clusters is deferred.
 
 The circle contains twelve pitch-class nodes ordered by ascending fifths:
 
@@ -39,11 +39,11 @@ The circle contains twelve pitch-class nodes ordered by ascending fifths:
 C · G · D · A · E · B · F♯/G♭ · D♭/C♯ · A♭/G♯ · E♭/D♯ · B♭/A♯ · F
 ```
 
-Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node shows a concise pitch label and its primary lower-octave computer-key binding, while deterministic triad construction chooses a context-appropriate spelling for the center readout.
+Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node shows a concise pitch label and its primary lower-octave computer-key binding, while deterministic chord construction chooses context-appropriate tertian spelling for the center readout.
 
-The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
+The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a three-edge triangle; four notes form a six-edge complete graph. Geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
-Every active tonal node carries its scale-degree role relative to its interpreted chord root: `1`; `♭3` or `3`; and `♭5`, `5`, or `♯5`. The persistent layer uses the selected preset root. A momentary held layer uses the independently detected held-triad root when three held pitch classes form a supported chord; partial or uninterpreted held sets retain their computer-key labels rather than implying a root.
+Every active tonal node carries its scale-degree role relative to its interpreted chord root: `1`; `♭3` or `3`; `♭5`, `5`, or `♯5`; and, for sevenths, `𝄫7`, `♭7`, or `7`. The persistent layer uses the selected preset root. A momentary held layer uses the independently detected chord root when three or four held pitch classes form a supported chord; partial or uninterpreted held sets retain their computer-key labels rather than implying a root.
 
 An outer chromatic ring presents the same twelve pitch classes clockwise in strict semitone order from C through B. Every preset or held pitch activates its corresponding position on both rings, revealing tonal proximity and interval distance at once. Only the inner tonal space draws edges: chromatic ordering is visually self-evident, and omitting a second graph prevents unnecessary density. The chromatic ring consists of twelve narrow annular beams with substantial radial length and clear angular separation. Each fill and outline uses a radial alpha gradient: intensity is greatest at the beam's inner edge and falls continuously into the overlay background toward its outer end. Inactive beams use a quiet neutral shade, preset chord tones use a low-opacity accent shade, and held notes add a temporary low-opacity white wash and outline. The selected preset root retains a stronger white outline on the outer ring, distinguishing it from the third and fifth even when a held-note layer overlaps it. These treatments reproduce the inner ring's independent persistent and momentary states at lower intensity so the inner graph remains the primary focus.
 
@@ -53,9 +53,10 @@ The UI owns a single state object independent of rendering and audio:
 
 ```text
 current.root           selected fifths-sector index, 0–11
-current.quality        major, minor, diminished, or augmented
-current.inversion      root, first, or second
-current.pitchClasses   three derived pitch classes
+current.family         triad or seventh
+current.quality        explicit quality within the selected family
+current.inversion      root, first, second, or third where valid
+current.pitchClasses   three or four derived pitch classes
 current.bass           pitch class derived from the inversion
 held.keys              physical piano keys currently held
 held.pitchClasses      unique pitch classes derived modulo 12
@@ -67,7 +68,7 @@ session.onDemandFocus  temporary permission for keyboard focus to move while thi
 revision               monotonically increasing change identifier
 ```
 
-Selecting a root or quality updates the persistent triad atomically. Quality uses an optional exclusive selection: clicking the active quality toggles it off, clears the persistent chord while preserving the root, and disables inversion auditions until another quality is selected. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
+Selecting a root, family, or quality updates the persistent chord atomically. Quality uses an optional exclusive selection: clicking the active quality toggles it off, clears the persistent chord while preserving the root, and disables inversion auditions until another quality is selected. Choosing an inversion sends one complete three- or four-note audition command with the corresponding bass without changing the pitch-class graph.
 
 Keyboard input preserves Quick Piano's physical layout and extends it to 31 contiguous semitones. Notes ascend across `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
 
@@ -79,7 +80,7 @@ No musical selection cycles from the keyboard: a mapped piano key always resolve
 
 ## Chord identity
 
-Chord identity is derived deterministically from the selected root and quality. Later additions may include suspended triads, seventh chords, extensions, free-form pitch selection, and chord detection for those broader inputs.
+Chord identity is derived deterministically from the selected root, family, and quality. Held-note recognition covers every supported triad and seventh formula. Later additions may include suspended chords, extensions, free-form pitch selection, and broader chord detection.
 
 The center of the circle displays:
 
@@ -130,7 +131,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Keep preset activation persistent and held-note activation momentary on both rings.
 - Distinguish the selected preset root from the other two chord tones on both rings.
 - Fade every outer beam from higher intensity near the tonal circle to full transparency at its outer end.
-- Derive exactly three persistent accent-colored nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary white layer.
+- Derive exactly three or four persistent accent-colored nodes from a preset family, root, and quality while allowing any number of held pitch classes to appear as a momentary white layer.
 - Keep edges behind nodes and labels.
 - Scale cleanly within the large overlay window without clipping labels or hit targets.
 
@@ -141,20 +142,20 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Reduce keyboard notes modulo 12 for the circular display.
 - Reference-count equivalent pitch classes so octave duplicates do not release a node prematurely.
 - Draw edges between every pair of held pitch classes.
-- Identify supported triads independently of the order in which their keys were pressed.
+- Identify supported triads and seventh chords independently of the order in which their keys were pressed.
 - Show the inversion implied by the lowest held keyboard note.
 - Show exactly the currently held pitch classes, including individual notes and partial combinations.
 - Apply the configured C2–C6 bounded range to both computer-key MIDI notes and preset inversion auditions.
 
 ### Chord identity
 
-- Construct major, minor, diminished, and augmented triads from interval formulas.
+- Construct four triad qualities and seven explicit seventh qualities from interval formulas.
 - Allow the active quality to toggle off without clearing the selected root, and disable inversion auditions while no quality is active.
 - Display the constructed chord name and active note names in the center.
 - Display scale-degree roles on active tonal nodes and show spelled notes, degree coordinates, and semitone coordinates in the center.
 - Show momentary `0–11` held-note coordinates at chromatic positions inside the tonal circle, with `0` fixed at the top for C and matching outer-ring activation.
 - Treat inversions as the same structural chord.
-- Make root, first, and second inversion controls audition the persistent triad with the appropriate bass and slash label.
+- Make root, first, second, and applicable third inversion controls audition the complete persistent chord with the appropriate bass and slash label.
 
 ### Interaction and accessibility
 
@@ -202,20 +203,20 @@ Pressing an inversion button sends the current preset's complete MIDI voicing to
 - Piano key press, release, auto-repeat suppression, and duplicate-octave handling.
 - Keyboard binding capture, duplicate-key swapping, reset, validation, and persistence.
 - Enharmonic node labels mapped to a single pitch identity.
-- Triad construction for every root and supported quality.
+- Triad and seventh-chord construction for every root and supported quality.
 - Inversion-invariant pitch-class graphs and inversion-specific bass values.
-- Graph edge generation for every supported triad.
-- One atomic `audition` command per inversion-button action, containing the current revision, all three concrete MIDI notes, and the duration.
+- Graph edge generation for every supported triad and seventh chord.
+- One atomic `audition` command per inversion-button action, containing the current revision, all three or four concrete MIDI notes, and the duration.
 - Direct node hit targets and hover behavior.
 - Keyboard navigation and auto-repeat rejection.
 
 ## Acceptance criteria
 
-- Every root can be combined with major, minor, diminished, or augmented quality.
-- Root, first, and second inversion produce the same three nodes and edges while changing the bass and slash label.
-- Holding any active mapped key activates the corresponding pitch-class node; holding a triad draws its three-node shape.
+- Every root can be combined with all four triad qualities and all seven seventh qualities.
+- All valid inversions produce the same three or four nodes and edges while changing the bass and slash label.
+- Holding any active mapped key activates the corresponding pitch-class node; holding a supported chord draws its complete shape and identifies it.
 - Releasing one of two held octave-equivalent keys leaves their shared node active.
-- Three active pitch classes produce exactly three undirected edges.
+- Three active pitch classes produce three undirected edges; four produce six.
 - Changing the root or quality changes the graph and label in one visible action.
 - The overlay validates as an Omarchy plugin and scales within the active output while remaining independent of bar position and orientation.
 - The mock engine log proves that each inversion audition sends one complete MIDI voicing atomically.
@@ -267,7 +268,7 @@ Example status messages:
 
 The control path publishes held and audition notes through atomic MIDI bitsets. The realtime callback reads those bitsets at buffer boundaries, so JSON parsing, allocation, process management, and mutex locking stay outside the audio path. Held notes and timed auditions are independent sources whose union drives the voices.
 
-Preset voicings use the lowest occurrence of the requested inversion bass that permits the complete ascending triad to fit inside the selected lower and upper bounds. No chord tone is dropped or folded when the range is too narrow; the overlay reports that the inversion does not fit instead. This preserves the same three pitch classes while aligning auditions with the singer's chosen register.
+Preset voicings use the lowest occurrence of the requested inversion bass that permits the complete ascending chord to fit inside the selected lower and upper bounds. No chord tone is dropped or folded when the range is too narrow; the overlay reports that the inversion does not fit instead. This preserves all three or four pitch classes while aligning auditions with the singer's chosen register.
 
 ## Synthesis behavior
 
@@ -317,7 +318,7 @@ No timer, recursive exit handler, or supervisor restarts the engine. A later use
 - Atomic activation of all notes in a chord.
 - Retention of common tones without phase or envelope reset.
 - Attack and release continuity at block boundaries.
-- Zero, one, three, and twelve active pitch classes.
+- Zero, one, three, four, and twelve active pitch classes.
 - Duplicate pitch normalization.
 - Gain behavior and clipping prevention at maximum activation.
 - Indefinite sustain without a 1.8-second or other fixed cutoff.
@@ -328,7 +329,7 @@ No timer, recursive exit handler, or supervisor restarts the engine. A later use
 ## Acceptance criteria
 
 - A held chord remains stable for at least ten minutes without periodic restart, dropout, or accumulated drift.
-- A triad begins as one synchronized engine update.
+- A triad or seventh chord begins as one synchronized engine update.
 - Common tones remain continuous when changing between related chords.
 - Added and removed notes transition without audible clicks or screeching.
 - Twelve active pitch classes do not clip under the default gain policy.
@@ -338,7 +339,7 @@ No timer, recursive exit handler, or supervisor restarts the engine. A later use
 
 ## Milestone dependency and delivery boundary
 
-Milestone 1 defines the musical state and the complete user interaction. Its mock engine contract is the sole integration boundary for Milestone 2. Engine work should not require redesigning node identity, triad construction, or inversion semantics.
+Milestone 1 defines the musical state and the complete user interaction. Its mock engine contract is the sole integration boundary for Milestone 2. Engine work should not require redesigning node identity, chord construction, or inversion semantics.
 
 Milestone 1 is complete when the overlay is independently useful and validated. Milestone 2 is complete when the native adapter is integrated, the audio lifecycle passes its tests, and sustained chord changes are audibly smooth.
 

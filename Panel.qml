@@ -13,6 +13,7 @@ Item {
   property var manifest: null
   property bool opened: false
   property int rootIndex: 0
+  property string chordFamily: "triad"
   property int qualityIndex: 0
   property int inversionIndex: 0
   property int revision: 0
@@ -31,6 +32,8 @@ Item {
   readonly property var selectedRange: Model.normalizeMidiRange(root.rangeLowMidi, root.rangeHighMidi, "")
   readonly property string rangeLabel: selectedRange.label
   readonly property int mappedKeyCount: selectedRange.count
+  readonly property var activeQualities: Model.qualitiesFor(root.chordFamily)
+  readonly property var availableInversions: Model.INVERSIONS.slice(0, root.chordFamily === "seventh" ? 4 : 3)
 
   readonly property var defaultPianoKeys: [
     { key: Qt.Key_A, label: "A" }, { key: Qt.Key_W, label: "W" }, { key: Qt.Key_S, label: "S" },
@@ -54,7 +57,7 @@ Item {
     }
     return notes
   }
-  readonly property var selectedChord: root.qualityIndex >= 0 ? Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex) : {
+  readonly property var selectedChord: root.qualityIndex >= 0 ? Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex, root.chordFamily) : {
     rootPitch: Model.noteAt(root.rootIndex).pitch,
     pitches: [],
     label: Model.noteAt(root.rootIndex).label,
@@ -62,8 +65,8 @@ Item {
     degreeNames: "",
     semitoneNames: ""
   }
-  readonly property var heldTriad: Model.identifyTriad(root.heldPitches, root.heldBass)
-  readonly property string heldSummary: root.heldPitches.length === 0 ? "Press any piano key" : root.heldTriad ? "Held: " + root.heldTriad.label : "Held: " + Model.pitchSetNames(root.heldPitches)
+  readonly property var heldChord: Model.identifyChord(root.heldPitches, root.heldBass)
+  readonly property string heldSummary: root.heldPitches.length === 0 ? "Press any piano key" : root.heldChord ? "Held: " + root.heldChord.label : "Held: " + Model.pitchSetNames(root.heldPitches)
   readonly property color gridColor: Util.alpha(root.foreground, 0.30)
   readonly property color quietColor: Util.alpha(root.foreground, 0.16)
   readonly property color activeColor: Color.accent
@@ -276,8 +279,8 @@ Item {
 
   function setSelection(nextRoot, nextQuality, nextInversion) {
     var normalizedRoot = Model.wrap(nextRoot, Model.FIFTHS.length)
-    var normalizedQuality = nextQuality < 0 ? -1 : Model.wrap(nextQuality, Model.QUALITIES.length)
-    var normalizedInversion = normalizedQuality < 0 ? 0 : Model.wrap(nextInversion, Model.INVERSIONS.length)
+    var normalizedQuality = nextQuality < 0 ? -1 : Model.wrap(nextQuality, root.activeQualities.length)
+    var normalizedInversion = normalizedQuality < 0 ? 0 : Model.wrap(nextInversion, root.availableInversions.length)
     if (normalizedRoot === root.rootIndex && normalizedQuality === root.qualityIndex && normalizedInversion === root.inversionIndex)
       return false
 
@@ -291,6 +294,21 @@ Item {
 
   function selectRoot(index) {
     root.setSelection(index, root.qualityIndex, root.inversionIndex)
+  }
+
+  function setChordFamily(family) {
+    var normalized = family === "seventh" ? "seventh" : "triad"
+    if (normalized === root.chordFamily)
+      return
+    root.releaseAllKeys()
+    root.chordFamily = normalized
+    root.qualityIndex = 0
+    root.inversionIndex = 0
+    root.revision += 1
+    engine.stop(root.revision)
+    playFlash.stop()
+    root.audioStatus = normalized === "seventh" ? "Seventh chords selected" : "Triads selected"
+    graph.requestPaint()
   }
 
   function selectQuality(index) {
@@ -312,8 +330,8 @@ Item {
     var changed = root.setSelection(root.rootIndex, root.qualityIndex, index)
     if (!changed)
       root.revision += 1
-    var chord = Model.chord(root.rootIndex, root.qualityIndex, index)
-    var notes = Model.midiVoicingInRange(root.rootIndex, root.qualityIndex, index, root.rangeLowMidi, root.rangeHighMidi)
+    var chord = Model.chord(root.rootIndex, root.qualityIndex, index, root.chordFamily)
+    var notes = Model.midiVoicingInRange(root.rootIndex, root.qualityIndex, index, root.rangeLowMidi, root.rangeHighMidi, root.chordFamily)
     engine.audition(root.revision, notes, notes.length > 0 ? 900 : 50)
     if (notes.length === 0) {
       root.audioStatus = chord.label + " · " + chord.inversionLabel + " inversion does not fit " + root.rangeLabel
@@ -350,7 +368,7 @@ Item {
     root.revision += 1
     if (state.pitches.length > 0) {
       engine.setHeld(root.revision, state.midiNotes)
-      var identified = Model.identifyTriad(state.pitches, root.heldBass)
+      var identified = Model.identifyChord(state.pitches, root.heldBass)
       root.audioStatus = "Held " + (identified ? identified.label : Model.pitchSetNames(state.pitches))
     } else {
       engine.setHeld(root.revision, [])
@@ -384,8 +402,8 @@ Item {
   }
 
   function roleForPitch(pitch) {
-    if (root.heldActive(pitch) && root.heldTriad)
-      return Model.chordRole(root.heldTriad, pitch)
+    if (root.heldActive(pitch) && root.heldChord)
+      return Model.chordRole(root.heldChord, pitch)
     if (root.presetActive(pitch))
       return Model.chordRole(root.selectedChord, pitch)
     return ""
@@ -806,25 +824,54 @@ Item {
             width: (parent.width - parent.spacing) / 2
             spacing: Style.space(6)
 
-            Text {
+            Row {
               anchors.horizontalCenter: parent.horizontalCenter
-              text: "QUALITY"
-              color: root.foreground
-              opacity: 0.55
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: true
+              spacing: Style.space(5)
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "QUALITY"
+                color: root.foreground
+                opacity: 0.55
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
+
+              Button {
+                text: "TRIAD"
+                selected: root.chordFamily === "triad"
+                bordered: true
+                foreground: root.foreground
+                fontFamily: Style.font.family
+                fontSize: Style.font.caption
+                horizontalPadding: Style.space(7)
+                verticalPadding: Style.space(3)
+                onClicked: root.setChordFamily("triad")
+              }
+
+              Button {
+                text: "7TH"
+                selected: root.chordFamily === "seventh"
+                bordered: true
+                foreground: root.foreground
+                fontFamily: Style.font.family
+                fontSize: Style.font.caption
+                horizontalPadding: Style.space(7)
+                verticalPadding: Style.space(3)
+                onClicked: root.setChordFamily("seventh")
+              }
             }
 
             Row {
               anchors.horizontalCenter: parent.horizontalCenter
               spacing: Style.space(5)
               Repeater {
-                model: Model.QUALITIES
+                model: root.activeQualities
                 delegate: Button {
                   required property var modelData
                   required property int index
-                  text: modelData.label
+                  text: modelData.shortLabel
                   selected: index === root.qualityIndex
                   bordered: true
                   foreground: root.foreground
@@ -857,7 +904,7 @@ Item {
               anchors.horizontalCenter: parent.horizontalCenter
               spacing: Style.space(5)
               Repeater {
-                model: Model.INVERSIONS
+                model: root.availableInversions
                 delegate: Button {
                   required property var modelData
                   required property int index
