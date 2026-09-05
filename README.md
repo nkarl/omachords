@@ -1,6 +1,6 @@
-# Chord Circle
+# Omachords
 
-Chord Circle is an educational chord explorer and playable computer-keyboard instrument for Omarchy Quattro. It presents every pitch class in two coordinated views: an inner circle of fifths for tonal relationships and an outer chromatic ring for semitone distance.
+Omachords is an educational chord explorer and playable computer-keyboard instrument for Omarchy Quattro. It presents every pitch class in two coordinated views: an inner circle of fifths for tonal relationships and an outer chromatic ring for semitone distance.
 
 ## Features
 
@@ -19,7 +19,7 @@ Chord Circle is an educational chord explorer and playable computer-keyboard ins
 - PipeWire and a working system audio output.
 - Rust and Cargo to build the audio engine. The marketplace installer does not execute build hooks, so this one manual build step is required after installation or update.
 
-Chord Circle runs as unsandboxed user code inside `omarchy-shell`. Review third-party plugin source before enabling it.
+Omachords runs as unsandboxed user code inside `omarchy-shell`. Review third-party plugin source before enabling it.
 
 ## Installation
 
@@ -35,7 +35,7 @@ Build the audio engine inside the installed checkout:
 cd ~/.config/omarchy/plugins/nkarl.omachords
 cargo build --release --manifest-path engine/Cargo.toml
 mkdir -p bin
-install -m755 engine/target/release/chord-circle-engine bin/chord-circle-engine
+install -m755 engine/target/release/omachords-engine bin/omachords-engine
 omarchy restart shell
 ```
 
@@ -43,7 +43,7 @@ The visualization remains usable if the engine is unavailable. An engine error a
 
 ## Usage
 
-Open or close Chord Circle directly with:
+Open or close Omachords directly with:
 
 ```bash
 omarchy-shell shell toggle nkarl.omachords '{}'
@@ -53,7 +53,7 @@ To use `Super` + `Shift` + `K`, add the following to `~/.config/hypr/bindings.lu
 
 ```lua
 hl.unbind("SUPER + SHIFT + K")
-o.bind("SUPER + SHIFT + K", "Chord Circle", "omarchy-shell shell toggle nkarl.omachords {}")
+o.bind("SUPER + SHIFT + K", "Omachords", "omarchy-shell shell toggle nkarl.omachords {}")
 ```
 
 Reload and check the Hyprland configuration:
@@ -96,8 +96,8 @@ The compiled engine under `bin/` and Cargo build output are intentionally exclud
 
 ## References and prior art
 
-Chord Circle grew from studying two enabled Omarchy plugins: [`max.piano` (Quick Piano)](https://github.com/JarlMaxi/omarchy-quick-piano) by Max Arvidsson informed its computer-keyboard instrument behavior, while [`io.github.markschellhas.circle-of-fifths` (Circle of Fifths)](https://github.com/markschellhas/omarchy-circle-of-fifths) by Mark Schellhas informed its circular tonal visualization. Chord Circle combines and extends those interaction ideas with independent preset and held-note layers, coordinated fifths and chromatic spaces, analytical chord coordinates, seventh chords, inversions, configurable mappings, and a persistent Rust/CPAL audio engine.
+Omachords grew from studying two enabled Omarchy plugins: [`max.piano` (Quick Piano)](https://github.com/JarlMaxi/omarchy-quick-piano) by Max Arvidsson informed its computer-keyboard instrument behavior, while [`io.github.markschellhas.circle-of-fifths` (Circle of Fifths)](https://github.com/markschellhas/omarchy-circle-of-fifths) by Mark Schellhas informed its circular tonal visualization. Omachords combines and extends those interaction ideas with independent preset and held-note layers, coordinated fifths and chromatic spaces, analytical chord coordinates, seventh chords, inversions, configurable mappings, and a persistent Rust/CPAL audio engine.
 
 ## License
 
-Chord Circle is available under the [MIT License](LICENSE).
+Omachords is available under the [MIT License](LICENSE).

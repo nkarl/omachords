@@ -1,4 +1,4 @@
-# Chord Circle Plugin Design
+# Omachords Plugin Design
 
 ## Status
 
@@ -6,7 +6,7 @@ Implemented through Milestone 2. This document records the product contract, arc
 
 ## Purpose
 
-Chord Circle is an Omarchy Quattro plugin for practicing chord structure through two connected forms of feedback: seeing which pitch classes compose a chord and hearing the chord.
+Omachords is an Omarchy Quattro plugin for practicing chord structure through two connected forms of feedback: seeing which pitch classes compose a chord and hearing the chord.
 
 The plugin is not a piano, sequencer, or four-part voicing tool. A chord is modeled primarily as a set of pitch classes. Root position and inversions therefore share the same graph; octave placement and the lowest sounding note belong to playback presentation rather than chord identity.
 
@@ -235,7 +235,7 @@ Use one persistent Rust synth process and one CPAL output stream, without the fi
 
 ## Process architecture
 
-Quickshell starts one `chord-circle-engine` process when audio is first needed. CPAL owns one long-lived callback-driven output stream that reaches the system PipeWire service through the Linux audio stack. Quickshell does not spawn a player for each note or chord.
+Quickshell starts one `omachords-engine` process when audio is first needed. CPAL owns one long-lived callback-driven output stream that reaches the system PipeWire service through the Linux audio stack. Quickshell does not spawn a player for each note or chord.
 
 ```text
 Quickshell overlay
