@@ -18,25 +18,27 @@ Item {
   property var heldKeys: ({})
   property var heldPitches: []
   property int heldBass: -1
+  property int baseOctave: Model.DEFAULT_BASE_OCTAVE
+  property bool settingsOpen: false
   property string audioStatus: "Choose an inversion to audition"
 
   readonly property color foreground: Color.foreground
+  readonly property int baseMidi: Model.midiForC(root.baseOctave)
+  readonly property string rangeLabel: Model.octaveRangeLabel(root.baseOctave)
 
-  readonly property var pianoNotes: [
-    { note: "C4", midi: 60, key: Qt.Key_A }, { note: "C#4", midi: 61, key: Qt.Key_W },
-    { note: "D4", midi: 62, key: Qt.Key_S }, { note: "D#4", midi: 63, key: Qt.Key_E },
-    { note: "E4", midi: 64, key: Qt.Key_D }, { note: "F4", midi: 65, key: Qt.Key_F },
-    { note: "F#4", midi: 66, key: Qt.Key_T }, { note: "G4", midi: 67, key: Qt.Key_G },
-    { note: "G#4", midi: 68, key: Qt.Key_Y }, { note: "A4", midi: 69, key: Qt.Key_H },
-    { note: "A#4", midi: 70, key: Qt.Key_U }, { note: "B4", midi: 71, key: Qt.Key_J },
-    { note: "C5", midi: 72, key: Qt.Key_K }, { note: "C#5", midi: 73, key: Qt.Key_O },
-    { note: "D5", midi: 74, key: Qt.Key_L }, { note: "D#5", midi: 75, key: Qt.Key_P },
-    { note: "E5", midi: 76, key: Qt.Key_Semicolon }, { note: "F5", midi: 77, key: Qt.Key_Apostrophe },
-    { note: "F#5", midi: 78, key: Qt.Key_BracketLeft }, { note: "G5", midi: 79, key: Qt.Key_Z },
-    { note: "G#5", midi: 80, key: Qt.Key_BracketRight }, { note: "A5", midi: 81, key: Qt.Key_X },
-    { note: "A#5", midi: 82, key: Qt.Key_Backslash }, { note: "B5", midi: 83, key: Qt.Key_C },
-    { note: "C6", midi: 84, key: Qt.Key_V }
+  readonly property var pianoKeys: [
+    Qt.Key_A, Qt.Key_W, Qt.Key_S, Qt.Key_E, Qt.Key_D, Qt.Key_F, Qt.Key_T, Qt.Key_G, Qt.Key_Y, Qt.Key_H, Qt.Key_U, Qt.Key_J,
+    Qt.Key_K, Qt.Key_O, Qt.Key_L, Qt.Key_P, Qt.Key_Semicolon, Qt.Key_Apostrophe, Qt.Key_BracketLeft, Qt.Key_Z,
+    Qt.Key_BracketRight, Qt.Key_X, Qt.Key_Backslash, Qt.Key_C, Qt.Key_V
   ]
+  readonly property var pianoNotes: {
+    var notes = []
+    for (var index = 0; index < root.pianoKeys.length; index++) {
+      var midi = root.baseMidi + index
+      notes.push({ note: Model.midiNoteName(midi), midi: midi, key: root.pianoKeys[index] })
+    }
+    return notes
+  }
   readonly property var selectedChord: Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex)
   readonly property var heldTriad: Model.identifyTriad(root.heldPitches, root.heldBass)
   readonly property string heldSummary: root.heldPitches.length === 0 ? "Press any piano key" : root.heldTriad ? "Held: " + root.heldTriad.label : "Held: " + Model.pitchSetNames(root.heldPitches)
@@ -59,6 +61,7 @@ Item {
   }
 
   function close() {
+    root.settingsOpen = false
     root.releaseAllKeys()
     root.revision += 1
     engine.stop(root.revision)
@@ -76,6 +79,73 @@ Item {
       root.dismiss()
     else
       root.open("{}")
+  }
+
+  function configuredBaseOctave() {
+    var config = root.shell ? root.shell.shellConfig : null
+    var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
+    var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
+    for (var i = 0; i < plugins.length; i++) {
+      var entry = plugins[i]
+      if (entry && entry.id === pluginId && entry.keyboardBaseOctave !== undefined)
+        return Model.clampBaseOctave(entry.keyboardBaseOctave)
+    }
+    return Model.DEFAULT_BASE_OCTAVE
+  }
+
+  function loadSettings() {
+    var octave = root.configuredBaseOctave()
+    if (octave === root.baseOctave)
+      return
+    root.silenceForRangeChange()
+    root.baseOctave = octave
+  }
+
+  function persistBaseOctave() {
+    if (!root.shell || typeof root.shell.updateEntryInline !== "function")
+      return
+    var config = root.shell.shellConfig
+    var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
+    var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
+    var settings = {}
+    for (var i = 0; i < plugins.length; i++) {
+      var entry = plugins[i]
+      if (!entry || entry.id !== pluginId)
+        continue
+      for (var key in entry)
+        if (key !== "id")
+          settings[key] = entry[key]
+      break
+    }
+    settings.keyboardBaseOctave = root.baseOctave
+    root.shell.updateEntryInline(pluginId, settings)
+  }
+
+  function setBaseOctave(octave) {
+    var next = Model.clampBaseOctave(octave)
+    if (next !== root.baseOctave) {
+      root.silenceForRangeChange()
+      root.baseOctave = next
+      root.audioStatus = "Range set to " + root.rangeLabel
+    }
+    root.persistBaseOctave()
+  }
+
+  function openSettings() {
+    root.silenceForRangeChange()
+    root.settingsOpen = true
+  }
+
+  function closeSettings() {
+    root.settingsOpen = false
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+  }
+
+  function silenceForRangeChange() {
+    root.releaseAllKeys()
+    root.revision += 1
+    engine.stop(root.revision)
+    playFlash.stop()
   }
 
   function setSelection(nextRoot, nextQuality, nextInversion) {
@@ -106,7 +176,7 @@ Item {
     if (!changed)
       root.revision += 1
     var chord = Model.chord(root.rootIndex, root.qualityIndex, index)
-    engine.audition(root.revision, Model.midiVoicing(root.rootIndex, root.qualityIndex, index), 900)
+    engine.audition(root.revision, Model.midiVoicing(root.rootIndex, root.qualityIndex, index, root.baseMidi), 900)
     root.audioStatus = "Auditioning " + chord.label + " · " + chord.inversionLabel + " inversion"
     playFlash.restart()
   }
@@ -166,6 +236,12 @@ Item {
   onSelectedChordChanged: graph.requestPaint()
   onHeldPitchesChanged: graph.requestPaint()
   onOpenedChanged: if (!root.opened) root.releaseAllKeys()
+  onShellChanged: root.loadSettings()
+
+  Connections {
+    target: root.shell
+    function onShellConfigChanged() { root.loadSettings() }
+  }
 
   EngineAdapter {
     id: engine
@@ -214,6 +290,12 @@ Item {
         Keys.priority: Keys.BeforeItem
 
       Keys.onPressed: function(event) {
+        if (root.settingsOpen) {
+          if (event.key === Qt.Key_Escape)
+            root.closeSettings()
+          event.accepted = true
+          return
+        }
         if (event.key === Qt.Key_Escape) {
           root.dismiss()
           event.accepted = true
@@ -227,10 +309,28 @@ Item {
       }
 
       Keys.onReleased: function(event) {
+        if (root.settingsOpen) {
+          event.accepted = true
+          return
+        }
         if (root.pianoNoteForKey(event.key)) {
           root.updatePianoKey(event.key, false, event.isAutoRepeat)
           event.accepted = true
         }
+      }
+
+      Button {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: Style.space(28)
+        z: 20
+        text: "RANGE  " + root.rangeLabel
+        tooltipText: "Change keyboard and audition range"
+        bordered: true
+        foreground: root.foreground
+        fontFamily: Style.font.family
+        fontSize: Style.font.caption
+        onClicked: root.openSettings()
       }
 
       Column {
@@ -583,12 +683,107 @@ Item {
 
         Text {
           width: parent.width
-          text: "Each piano key is one fixed note · Esc close"
+          text: "Range " + root.rangeLabel + " · Each piano key is one fixed note · Esc close"
           color: root.foreground
           opacity: 0.45
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           horizontalAlignment: Text.AlignHCenter
+        }
+      }
+
+      Rectangle {
+        anchors.fill: parent
+        visible: root.settingsOpen
+        z: 100
+        color: "#99000000"
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: root.closeSettings()
+        }
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: Math.min(parent.width - Style.space(64), Style.space(680))
+          height: Style.space(310)
+          radius: Math.max(Style.cornerRadius, Style.space(12))
+          color: Color.popups.background
+          border.color: Color.accent
+          border.width: 2
+
+          MouseArea {
+            anchors.fill: parent
+            onClicked: function(mouse) { mouse.accepted = true }
+          }
+
+          Column {
+            anchors.fill: parent
+            anchors.margins: Style.space(30)
+            spacing: Style.space(16)
+
+            Text {
+              width: parent.width
+              text: "TWO-OCTAVE RANGE"
+              color: root.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              width: parent.width
+              text: "Set the register for both computer-key performance and inversion auditions."
+              color: root.foreground
+              opacity: 0.68
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.WordWrap
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              width: parent.width
+              text: root.rangeLabel
+              color: root.activeColor
+              font.family: Style.font.family
+              font.pixelSize: Style.font.title
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: Style.space(5)
+
+              Repeater {
+                model: Model.MAX_BASE_OCTAVE - Model.MIN_BASE_OCTAVE + 1
+                delegate: Button {
+                  required property int index
+                  readonly property int octave: Model.MIN_BASE_OCTAVE + index
+                  text: Model.octaveRangeLabel(octave)
+                  selected: octave === root.baseOctave
+                  bordered: true
+                  foreground: root.foreground
+                  fontFamily: Style.font.family
+                  fontSize: Style.font.caption
+                  horizontalPadding: Style.space(9)
+                  onClicked: root.setBaseOctave(octave)
+                }
+              }
+            }
+
+            Button {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "Done"
+              bordered: true
+              foreground: root.foreground
+              fontFamily: Style.font.family
+              fontSize: Style.font.bodySmall
+              onClicked: root.closeSettings()
+            }
+          }
         }
       }
     }

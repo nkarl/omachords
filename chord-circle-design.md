@@ -58,12 +58,15 @@ current.bass           pitch class derived from the inversion
 held.keys              physical piano keys currently held
 held.pitchClasses      unique pitch classes derived modulo 12
 held.bass              pitch class of the lowest held keyboard note
+settings.baseOctave    lower C of the shared two-octave performance range
 revision               monotonically increasing change identifier
 ```
 
 Selecting a root or quality updates the persistent triad atomically. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
 
 Keyboard input follows Quick Piano exactly. White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
+
+The settings modal moves the entire 25-note keyboard mapping and all preset inversion auditions as one two-octave range. C3–C5 is the default; C1–C3 through C6–C8 are available. Opening or changing the range silences current computer-key notes and any timed audition before remapping them, preventing old-register audio or stale MIDI notes, and persists `keyboardBaseOctave` in the plugin's top-level `shell.json` entry.
 
 No musical selection cycles from the keyboard: a mapped piano key always resolves to one fixed note, and repeating the same combination always produces the same pitch-class set and chord identity. Root, quality, and inversion presets are changed with the pointer controls rather than cycling shortcuts.
 
@@ -130,6 +133,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Identify supported triads independently of the order in which their keys were pressed.
 - Show the inversion implied by the lowest held keyboard note.
 - Show exactly the currently held pitch classes, including individual notes and partial combinations.
+- Apply the configured two-octave range to both computer-key MIDI notes and preset inversion auditions.
 
 ### Chord identity
 
@@ -143,6 +147,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Support mouse selection and keyboard navigation.
 - Provide visible hover and keyboard-focus states.
 - Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
+- Provide a modal range selector whose persisted choice is visible from the main overlay.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
@@ -245,7 +250,7 @@ Example status messages:
 
 The control path publishes held and audition notes through atomic MIDI bitsets. The realtime callback reads those bitsets at buffer boundaries, so JSON parsing, allocation, process management, and mutex locking stay outside the audio path. Held notes and timed auditions are independent sources whose union drives the voices.
 
-Preset voicings start from the selected root in the C4–B4 range. Root position places the other chord tones above it; first inversion raises the root by one octave; second inversion also raises the original third by one octave. This keeps each audition ascending while preserving the same three pitch classes.
+Preset voicings start from the selected root in the configured base-octave range. Root position places the other chord tones above it; first inversion raises the root by one octave; second inversion also raises the original third by one octave. This keeps each audition ascending while preserving the same three pitch classes and aligns auditions with the computer-keyboard register.
 
 ## Synthesis behavior
 

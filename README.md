@@ -6,6 +6,8 @@ Chord Circle is a large, centered, keyboard-exclusive overlay. Its interactive i
 
 A clicked root and the selected quality produce a persistent accent-colored triad, with the root distinguished by a white border. Independently, the same two-octave computer-keyboard layout as `max.piano` provides literal piano semantics: each held key adds a momentary white glow, white held-note edges, and sustained audio without replacing the selected triad. Repeated octaves share one node. Root, First, and Second audition concrete MIDI voicings through one persistent Rust/CPAL audio process.
 
+The Range settings modal moves the complete two-octave layout and preset auditions together. The default is C3–C5, with selectable ranges from C1–C3 through C6–C8. The selection is stored with the plugin entry in `~/.config/omarchy/shell.json` and survives shell restarts.
+
 White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`.
 
 Keyboard input never cycles the root, quality, or inversion. Each mapped key always represents one fixed note, and repeatedly playing the same combination yields the same pitch-class set and triad identification. Physical press and release events update the held set exactly once; Qt-marked auto-repeat events and duplicate transitions are ignored.

@@ -21,6 +21,17 @@ test("chromatic ring follows strict semitone order", () => {
   assert.equal(model.chromaticMidDeg(11), 240)
 })
 
+test("two-octave keyboard ranges use scientific pitch notation", () => {
+  assert.equal(model.clampBaseOctave(-4), 1)
+  assert.equal(model.clampBaseOctave(20), 6)
+  assert.equal(model.clampBaseOctave("invalid"), 3)
+  assert.equal(model.midiForC(3), 48)
+  assert.equal(model.midiNoteName(48), "C3")
+  assert.equal(model.midiNoteName(49), "C♯3")
+  assert.equal(model.midiNoteName(72), "C5")
+  assert.equal(model.octaveRangeLabel(3), "C3–C5")
+})
+
 test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 0, 0).pitches), [0, 4, 7])
   assert.deepEqual(Array.from(model.chord(0, 1, 0).pitches), [0, 3, 7])
@@ -60,6 +71,9 @@ test("inversion changes bass and label but not the pitch-class graph", () => {
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 0)), [60, 64, 67])
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 1)), [64, 67, 72])
   assert.deepEqual(Array.from(model.midiVoicing(0, 0, 2)), [67, 72, 76])
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 0, 48)), [48, 52, 55])
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 1, 48)), [52, 55, 60])
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 2, 48)), [55, 60, 64])
 })
 
 test("held pitch classes are identified independently of key order", () => {

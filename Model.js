@@ -3,6 +3,10 @@
 var SECTORS = 12
 var SECTOR_DEG = 360 / SECTORS
 var TOP_DEG = -90
+var MIN_BASE_OCTAVE = 1
+var MAX_BASE_OCTAVE = 6
+var DEFAULT_BASE_OCTAVE = 3
+var MIDI_SHARP_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
 
 // Clockwise from 12 o'clock, matching the circle of fifths.
 var FIFTHS = [
@@ -96,6 +100,27 @@ function pitchName(pitch) {
   return FLAT_NAMES[wrap(pitch, 12)]
 }
 
+function clampBaseOctave(octave) {
+  var value = Math.round(Number(octave))
+  if (!isFinite(value))
+    return DEFAULT_BASE_OCTAVE
+  return Math.max(MIN_BASE_OCTAVE, Math.min(MAX_BASE_OCTAVE, value))
+}
+
+function midiForC(octave) {
+  return (clampBaseOctave(octave) + 1) * 12
+}
+
+function midiNoteName(midi) {
+  var note = Math.max(0, Math.min(127, Math.round(Number(midi))))
+  return MIDI_SHARP_NAMES[wrap(note, 12)] + (Math.floor(note / 12) - 1)
+}
+
+function octaveRangeLabel(octave) {
+  var base = clampBaseOctave(octave)
+  return "C" + base + "–C" + (base + 2)
+}
+
 function sectorIndexForPitch(pitch) {
   var pc = wrap(pitch, 12)
   for (var i = 0; i < FIFTHS.length; i++)
@@ -185,11 +210,12 @@ function heldPitchState(entries) {
   }
 }
 
-function midiVoicing(rootIndex, qualityIndex, inversionIndex) {
+function midiVoicing(rootIndex, qualityIndex, inversionIndex, baseMidi) {
   var root = noteAt(rootIndex)
   var quality = qualityAt(qualityIndex)
   var inversion = wrap(inversionIndex, quality.intervals.length)
-  var rootMidi = 60 + root.pitch
+  var rangeBase = baseMidi === undefined ? midiForC(4) : Math.round(Number(baseMidi))
+  var rootMidi = rangeBase + root.pitch
   var notes = []
   for (var i = inversion; i < quality.intervals.length; i++)
     notes.push(rootMidi + quality.intervals[i])
