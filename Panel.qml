@@ -46,6 +46,9 @@ Item {
   readonly property color shadeColor: Util.alpha(root.foreground, 0.07)
   readonly property color shadeBorderColor: Util.alpha(root.foreground, 0.14)
   readonly property color chromaticActiveColor: Util.alpha(root.activeColor, 0.34)
+  readonly property color chromaticHeldColor: Util.alpha(root.foreground, 0.16)
+  readonly property color chromaticHeldBorderColor: Util.alpha(root.foreground, 0.68)
+  readonly property color chromaticRootBorderColor: Util.alpha(root.foreground, 0.92)
   readonly property var primaryKeyLabels: ["A", "W", "S", "E", "D", "F", "T", "G", "Y", "H", "U", "J"]
 
   function open(payloadJson) {
@@ -275,7 +278,7 @@ Item {
               }
             }
 
-            function drawChromaticBlock(ctx, index, fillColor) {
+            function traceChromaticBlock(ctx, index) {
               var gapDegrees = 1.15
               var start = Model.degToRad(Model.chromaticMidDeg(index) - Model.SECTOR_DEG / 2 + gapDegrees / 2)
               var end = Model.degToRad(Model.chromaticMidDeg(index) + Model.SECTOR_DEG / 2 - gapDegrees / 2)
@@ -283,10 +286,21 @@ Item {
               ctx.arc(ring.cx, ring.cy, ring.outerRadius, start, end, false)
               ctx.arc(ring.cx, ring.cy, ring.outerInnerRadius, end, start, true)
               ctx.closePath()
+            }
+
+            function drawChromaticBlock(ctx, index, fillColor, borderColor, borderWidth) {
+              traceChromaticBlock(ctx, index)
               ctx.fillStyle = fillColor
               ctx.fill()
-              ctx.strokeStyle = root.shadeBorderColor
-              ctx.lineWidth = 1
+              ctx.strokeStyle = borderColor
+              ctx.lineWidth = borderWidth
+              ctx.stroke()
+            }
+
+            function outlineChromaticBlock(ctx, index, color, width) {
+              traceChromaticBlock(ctx, index)
+              ctx.strokeStyle = color
+              ctx.lineWidth = width
               ctx.stroke()
             }
 
@@ -294,8 +308,13 @@ Item {
               var ctx = getContext("2d")
               ctx.clearRect(0, 0, width, height)
               for (var pitch = 0; pitch < Model.CHROMATIC.length; pitch++) {
-                var chromaticActive = root.presetActive(pitch) || root.heldActive(pitch)
-                drawChromaticBlock(ctx, pitch, chromaticActive ? root.chromaticActiveColor : root.shadeColor)
+                var preset = root.presetActive(pitch)
+                var held = root.heldActive(pitch)
+                drawChromaticBlock(ctx, pitch, preset ? root.chromaticActiveColor : root.shadeColor, root.shadeBorderColor, 1)
+                if (held)
+                  drawChromaticBlock(ctx, pitch, root.chromaticHeldColor, root.chromaticHeldBorderColor, 2)
+                if (pitch === root.selectedChord.rootPitch)
+                  outlineChromaticBlock(ctx, pitch, root.chromaticRootBorderColor, 2.5)
               }
               ctx.strokeStyle = root.quietColor
               ctx.lineWidth = 1.5
@@ -312,7 +331,9 @@ Item {
             delegate: Item {
               required property int index
               readonly property var note: Model.chromaticNoteAt(index)
-              readonly property bool active: root.presetActive(note.pitch) || root.heldActive(note.pitch)
+              readonly property bool preset: root.presetActive(note.pitch)
+              readonly property bool held: root.heldActive(note.pitch)
+              readonly property bool selectedRoot: note.pitch === root.selectedChord.rootPitch
               readonly property real labelRadius: (ring.outerRadius + ring.outerInnerRadius) / 2
               width: Style.space(40)
               height: Style.space(24)
@@ -323,10 +344,10 @@ Item {
                 anchors.centerIn: parent
                 text: note.label
                 color: root.foreground
-                opacity: parent.active ? 0.68 : 0.32
+                opacity: parent.held ? 0.90 : parent.selectedRoot ? 0.80 : parent.preset ? 0.68 : 0.32
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                font.bold: parent.active
+                font.bold: parent.preset || parent.held
               }
             }
           }

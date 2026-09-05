@@ -43,7 +43,7 @@ Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node sho
 
 The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
-An outer chromatic ring presents the same twelve pitch classes clockwise in strict semitone order from C through B. Every preset or held pitch activates its corresponding position on both rings, revealing tonal proximity and interval distance at once. Only the inner tonal space draws edges: chromatic ordering is visually self-evident, and omitting a second graph prevents unnecessary density. The chromatic ring consists of twelve annular blocks separated by small gaps. Inactive blocks use a quiet neutral shade; active blocks use a low-opacity accent shade rather than the white held-key color, preserving the inner ring as the primary focus.
+An outer chromatic ring presents the same twelve pitch classes clockwise in strict semitone order from C through B. Every preset or held pitch activates its corresponding position on both rings, revealing tonal proximity and interval distance at once. Only the inner tonal space draws edges: chromatic ordering is visually self-evident, and omitting a second graph prevents unnecessary density. The chromatic ring consists of twelve annular blocks separated by small gaps. Inactive blocks use a quiet neutral shade, preset chord tones use a low-opacity accent shade, and held notes add a temporary low-opacity white wash and outline. The selected preset root retains a stronger white outline on the outer ring, distinguishing it from the third and fifth even when a held-note layer overlaps it. These treatments reproduce the inner ring's independent persistent and momentary states at lower intensity so the inner graph remains the primary focus.
 
 ## Chord state
 
@@ -113,6 +113,8 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Connect every pair of active nodes with an edge.
 - Draw graph edges only in the inner tonal circle; never connect outer chromatic blocks.
 - Activate the matching position on both rings for every preset or held pitch class.
+- Keep preset activation persistent and held-note activation momentary on both rings.
+- Distinguish the selected preset root from the other two chord tones on both rings.
 - Derive exactly three persistent accent-colored nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary white layer.
 - Keep edges behind nodes and labels.
 - Scale cleanly within the large overlay window without clipping labels or hit targets.
