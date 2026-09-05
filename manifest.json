@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nkarl.omachords",
   "name": "Omachords",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Kyle",
   "license": "MIT",
   "description": "Build and compare triads and seventh chords across tonal and chromatic pitch circles.",
