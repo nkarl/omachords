@@ -420,7 +420,6 @@ Item {
     WlrLayershell.namespace: "chord-circle"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.onDemandFocus ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
-    onActiveChanged: if (!active && root.onDemandFocus) root.releaseAllKeys()
 
     MouseArea {
       anchors.fill: parent
@@ -446,6 +445,7 @@ Item {
         id: keyCatcher
         anchors.fill: parent
         focus: true
+        onActiveFocusChanged: if (!activeFocus && root.onDemandFocus) root.releaseAllKeys()
         Keys.priority: Keys.BeforeItem
 
       Keys.onPressed: function(event) {
