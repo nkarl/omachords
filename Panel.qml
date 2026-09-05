@@ -45,10 +45,12 @@ Item {
   readonly property color activeColor: Color.accent
   readonly property color shadeColor: Util.alpha(root.foreground, 0.07)
   readonly property color shadeBorderColor: Util.alpha(root.foreground, 0.14)
-  readonly property color chromaticActiveColor: Util.alpha(root.activeColor, 0.34)
-  readonly property color chromaticHeldColor: Util.alpha(root.foreground, 0.16)
+  readonly property color chromaticActiveColor: Util.alpha(root.activeColor, 0.42)
+  readonly property color chromaticHeldColor: Util.alpha(root.foreground, 0.20)
   readonly property color chromaticHeldBorderColor: Util.alpha(root.foreground, 0.68)
   readonly property color chromaticRootBorderColor: Util.alpha(root.foreground, 0.92)
+  readonly property color transparentForeground: Util.alpha(root.foreground, 0.0)
+  readonly property color transparentAccent: Util.alpha(root.activeColor, 0.0)
   readonly property var primaryKeyLabels: ["A", "W", "S", "E", "D", "F", "T", "G", "Y", "H", "U", "J"]
 
   function open(payloadJson) {
@@ -193,8 +195,8 @@ Item {
     Rectangle {
       id: card
       anchors.centerIn: parent
-      width: Math.min(window.screen.width * 0.84, Style.space(920))
-      height: Math.min(window.screen.height * 0.90, Style.space(980))
+      width: Math.min(window.screen.width * 0.88, Style.space(1080))
+      height: Math.min(window.screen.height * 0.92, Style.space(1180))
       radius: Math.max(Style.cornerRadius, Style.space(12))
       color: Color.popups.background
       border.color: Color.popups.border
@@ -257,7 +259,8 @@ Item {
           readonly property real cx: width / 2
           readonly property real cy: height / 2
           readonly property real outerRadius: Math.min(width, height) / 2 - Style.space(4)
-          readonly property real outerInnerRadius: outerRadius - Style.space(42)
+          readonly property real beamLength: Math.min(Style.space(126), outerRadius * 0.29)
+          readonly property real outerInnerRadius: outerRadius - beamLength
           readonly property real graphRadius: outerInnerRadius - Style.space(54)
 
           Canvas {
@@ -279,13 +282,20 @@ Item {
             }
 
             function traceChromaticBlock(ctx, index) {
-              var gapDegrees = 1.15
-              var start = Model.degToRad(Model.chromaticMidDeg(index) - Model.SECTOR_DEG / 2 + gapDegrees / 2)
-              var end = Model.degToRad(Model.chromaticMidDeg(index) + Model.SECTOR_DEG / 2 - gapDegrees / 2)
+              var beamDegrees = 11.5
+              var start = Model.degToRad(Model.chromaticMidDeg(index) - beamDegrees / 2)
+              var end = Model.degToRad(Model.chromaticMidDeg(index) + beamDegrees / 2)
               ctx.beginPath()
               ctx.arc(ring.cx, ring.cy, ring.outerRadius, start, end, false)
               ctx.arc(ring.cx, ring.cy, ring.outerInnerRadius, end, start, true)
               ctx.closePath()
+            }
+
+            function radialFade(ctx, innerColor, outerColor) {
+              var gradient = ctx.createRadialGradient(ring.cx, ring.cy, ring.outerInnerRadius, ring.cx, ring.cy, ring.outerRadius)
+              gradient.addColorStop(0, innerColor)
+              gradient.addColorStop(1, outerColor)
+              return gradient
             }
 
             function drawChromaticBlock(ctx, index, fillColor, borderColor, borderWidth) {
@@ -307,14 +317,20 @@ Item {
             onPaint: {
               var ctx = getContext("2d")
               ctx.clearRect(0, 0, width, height)
+              var quietFill = radialFade(ctx, root.shadeColor, root.transparentForeground)
+              var quietBorder = radialFade(ctx, root.shadeBorderColor, root.transparentForeground)
+              var presetFill = radialFade(ctx, root.chromaticActiveColor, root.transparentAccent)
+              var heldFill = radialFade(ctx, root.chromaticHeldColor, root.transparentForeground)
+              var heldBorder = radialFade(ctx, root.chromaticHeldBorderColor, root.transparentForeground)
+              var rootBorder = radialFade(ctx, root.chromaticRootBorderColor, root.transparentForeground)
               for (var pitch = 0; pitch < Model.CHROMATIC.length; pitch++) {
                 var preset = root.presetActive(pitch)
                 var held = root.heldActive(pitch)
-                drawChromaticBlock(ctx, pitch, preset ? root.chromaticActiveColor : root.shadeColor, root.shadeBorderColor, 1)
+                drawChromaticBlock(ctx, pitch, preset ? presetFill : quietFill, quietBorder, 1)
                 if (held)
-                  drawChromaticBlock(ctx, pitch, root.chromaticHeldColor, root.chromaticHeldBorderColor, 2)
+                  drawChromaticBlock(ctx, pitch, heldFill, heldBorder, 2)
                 if (pitch === root.selectedChord.rootPitch)
-                  outlineChromaticBlock(ctx, pitch, root.chromaticRootBorderColor, 2.5)
+                  outlineChromaticBlock(ctx, pitch, rootBorder, 2.5)
               }
               ctx.strokeStyle = root.quietColor
               ctx.lineWidth = 1.5
@@ -334,7 +350,7 @@ Item {
               readonly property bool preset: root.presetActive(note.pitch)
               readonly property bool held: root.heldActive(note.pitch)
               readonly property bool selectedRoot: note.pitch === root.selectedChord.rootPitch
-              readonly property real labelRadius: (ring.outerRadius + ring.outerInnerRadius) / 2
+              readonly property real labelRadius: ring.outerInnerRadius + Style.space(24)
               width: Style.space(40)
               height: Style.space(24)
               x: Model.polarX(ring.cx, labelRadius, Model.chromaticMidDeg(note.pitch)) - width / 2
