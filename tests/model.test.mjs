@@ -55,6 +55,19 @@ test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 3, 0).pitches), [0, 4, 8])
 })
 
+test("chords expose scale-degree and semitone analysis", () => {
+  const major = model.chord(0, 0, 0)
+  assert.equal(major.degreeNames, "1 · 3 · 5")
+  assert.equal(major.semitoneNames, "0 · 4 · 7")
+  assert.equal(model.chordRole(major, 0), "1")
+  assert.equal(model.chordRole(major, 4), "3")
+  assert.equal(model.chordRole(major, 7), "5")
+  assert.equal(model.chordRole(major, 2), "")
+  assert.equal(model.chord(0, 1, 0).degreeNames, "1 · ♭3 · 5")
+  assert.equal(model.chord(0, 2, 0).degreeNames, "1 · ♭3 · ♭5")
+  assert.equal(model.chord(0, 3, 0).degreeNames, "1 · 3 · ♯5")
+})
+
 test("every root and quality produces three distinct formula pitches", () => {
   const formulas = [[0, 4, 7], [0, 3, 7], [0, 3, 6], [0, 4, 8]]
   for (let rootIndex = 0; rootIndex < 12; rootIndex += 1) {

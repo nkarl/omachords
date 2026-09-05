@@ -352,6 +352,14 @@ Item {
     return Model.contains(root.heldPitches, pitch)
   }
 
+  function roleForPitch(pitch) {
+    if (root.heldActive(pitch) && root.heldTriad)
+      return Model.chordRole(root.heldTriad, pitch)
+    if (root.presetActive(pitch))
+      return Model.chordRole(root.selectedChord, pitch)
+    return ""
+  }
+
   onSelectedChordChanged: graph.requestPaint()
   onHeldPitchesChanged: graph.requestPaint()
   onOpenedChanged: if (!root.opened) root.releaseAllKeys()
@@ -643,11 +651,12 @@ Item {
 
                   Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.keyLabelForPitch(note.pitch)
+                    text: preset || held ? (root.roleForPitch(note.pitch) || root.keyLabelForPitch(note.pitch)) : root.keyLabelForPitch(note.pitch)
                     color: preset || held ? Color.popups.background : root.foreground
-                    opacity: preset || held ? 0.78 : 0.42
+                    opacity: preset || held ? 0.92 : 0.42
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
+                    font.bold: preset || held
                   }
                 }
               }
@@ -662,6 +671,33 @@ Item {
                   root.selectRoot(index)
                   keyCatcher.forceActiveFocus()
                 }
+              }
+            }
+          }
+
+          Repeater {
+            model: Model.CHROMATIC.length
+            delegate: Rectangle {
+              required property int index
+              readonly property var note: Model.chromaticNoteAt(index)
+              readonly property real markerRadius: ring.graphRadius * 0.70
+              visible: root.heldActive(note.pitch)
+              width: Style.space(38)
+              height: Style.space(24)
+              radius: height / 2
+              x: Model.polarX(ring.cx, markerRadius, Model.chromaticMidDeg(note.pitch)) - width / 2
+              y: Model.polarY(ring.cy, markerRadius, Model.chromaticMidDeg(note.pitch)) - height / 2
+              color: Util.alpha(root.foreground, 0.12)
+              border.width: 1
+              border.color: Util.alpha(root.foreground, 0.48)
+
+              Text {
+                anchors.centerIn: parent
+                text: parent.note.label
+                color: root.foreground
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                font.bold: true
               }
             }
           }
@@ -689,6 +725,27 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               wrapMode: Text.WordWrap
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              width: parent.width
+              text: root.selectedChord.degreeNames
+              color: root.activeColor
+              opacity: 0.92
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              width: parent.width
+              text: root.selectedChord.semitoneNames + " st"
+              color: root.foreground
+              opacity: 0.58
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
               horizontalAlignment: Text.AlignHCenter
             }
 

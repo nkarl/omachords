@@ -43,6 +43,8 @@ Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node sho
 
 The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
+Every active tonal node carries its scale-degree role relative to its interpreted chord root: `1`; `♭3` or `3`; and `♭5`, `5`, or `♯5`. The persistent layer uses the selected preset root. A momentary held layer uses the independently detected held-triad root when three held pitch classes form a supported chord; partial or uninterpreted held sets retain their computer-key labels rather than implying a root.
+
 An outer chromatic ring presents the same twelve pitch classes clockwise in strict semitone order from C through B. Every preset or held pitch activates its corresponding position on both rings, revealing tonal proximity and interval distance at once. Only the inner tonal space draws edges: chromatic ordering is visually self-evident, and omitting a second graph prevents unnecessary density. The chromatic ring consists of twelve narrow annular beams with substantial radial length and clear angular separation. Each fill and outline uses a radial alpha gradient: intensity is greatest at the beam's inner edge and falls continuously into the overlay background toward its outer end. Inactive beams use a quiet neutral shade, preset chord tones use a low-opacity accent shade, and held notes add a temporary low-opacity white wash and outline. The selected preset root retains a stronger white outline on the outer ring, distinguishing it from the third and fifth even when a held-note layer overlaps it. These treatments reproduce the inner ring's independent persistent and momentary states at lower intensity so the inner graph remains the primary focus.
 
 ## Chord state
@@ -82,8 +84,12 @@ The center of the circle displays:
 
 - The constructed chord name, such as `C major` or `A minor`.
 - The active note names, such as `C · E · G`.
+- The scale-degree coordinates, such as `1 · 3 · 5`.
+- The chromatic interval coordinates, such as `0 · 4 · 7 st`.
 
 Inversion may be displayed as a slash name such as `C/E` when a playback bass is selected, but it does not alter the nodes or edges.
+
+While computer keys are held, their pitch classes also appear as compact momentary labels at their strict chromatic positions inside the tonal circle. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
 
 ## Plugin shape
 
@@ -143,6 +149,8 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 - Construct major, minor, diminished, and augmented triads from interval formulas.
 - Display the constructed chord name and active note names in the center.
+- Display scale-degree roles on active tonal nodes and show spelled notes, degree coordinates, and semitone coordinates in the center.
+- Show momentary held-note labels at chromatic positions inside the tonal circle.
 - Treat inversions as the same structural chord.
 - Make root, first, and second inversion controls audition the persistent triad with the appropriate bass and slash label.
 

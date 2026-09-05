@@ -37,10 +37,10 @@ var CHROMATIC = [
 ]
 
 var QUALITIES = [
-  { id: "major", label: "Major", symbol: "", intervals: [0, 4, 7] },
-  { id: "minor", label: "Minor", symbol: "m", intervals: [0, 3, 7] },
-  { id: "diminished", label: "Diminished", symbol: "dim", intervals: [0, 3, 6] },
-  { id: "augmented", label: "Augmented", symbol: "aug", intervals: [0, 4, 8] }
+  { id: "major", label: "Major", symbol: "", intervals: [0, 4, 7], degrees: ["1", "3", "5"] },
+  { id: "minor", label: "Minor", symbol: "m", intervals: [0, 3, 7], degrees: ["1", "♭3", "5"] },
+  { id: "diminished", label: "Diminished", symbol: "dim", intervals: [0, 3, 6], degrees: ["1", "♭3", "♭5"] },
+  { id: "augmented", label: "Augmented", symbol: "aug", intervals: [0, 4, 8], degrees: ["1", "3", "♯5"] }
 ]
 
 var INVERSIONS = [
@@ -238,8 +238,21 @@ function chord(rootIndex, qualityIndex, inversionIndex) {
     qualityLabel: quality.label,
     inversionLabel: inversionAt(inversion).label,
     spellings: spellings.slice(0),
-    noteNames: spellings[0] + " · " + spellings[1] + " · " + spellings[2]
+    noteNames: spellings[0] + " · " + spellings[1] + " · " + spellings[2],
+    degrees: quality.degrees.slice(0),
+    degreeNames: quality.degrees.join(" · "),
+    semitoneNames: quality.intervals.join(" · ")
   }
+}
+
+function chordRole(chordValue, pitch) {
+  if (!chordValue || !chordValue.pitches || !chordValue.degrees)
+    return ""
+  var normalizedPitch = wrap(pitch, 12)
+  for (var i = 0; i < chordValue.pitches.length; i++)
+    if (chordValue.pitches[i] === normalizedPitch)
+      return chordValue.degrees[i]
+  return ""
 }
 
 function samePitchSet(a, b) {
