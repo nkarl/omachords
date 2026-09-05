@@ -151,7 +151,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Support mouse selection and keyboard navigation.
 - Provide visible hover and keyboard-focus states.
 - Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
-- Provide a dual-bound semitone range slider whose persisted choice and active key count are visible from the main overlay.
+- Show the current range and active key count as non-interactive indicator text beside a dedicated settings button, then provide a dual-bound semitone range slider inside the settings modal.
 - Allow every keyboard slot to be rebound, swap duplicate assignments, and restore the complete default map.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.

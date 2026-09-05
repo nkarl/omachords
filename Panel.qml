@@ -440,18 +440,34 @@ Item {
         }
       }
 
-      Button {
+      Row {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: Style.space(28)
         z: 20
-        text: "RANGE  " + root.rangeLabel
-        tooltipText: "Change keyboard and audition range"
-        bordered: true
-        foreground: root.foreground
-        fontFamily: Style.font.family
-        fontSize: Style.font.caption
-        onClicked: root.openSettings()
+        spacing: Style.space(8)
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.rangeLabel + " · " + root.mappedKeyCount + " keys"
+          color: root.foreground
+          opacity: 0.55
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+        }
+
+        PanelActionButton {
+          anchors.verticalCenter: parent.verticalCenter
+          iconText: "󰒓"
+          tooltipText: "Settings"
+          foreground: root.foreground
+          fontFamily: Style.font.family
+          fontSize: Style.font.icon
+          size: Style.space(30)
+          focusable: true
+          bordered: true
+          onClicked: root.openSettings()
+        }
       }
 
       Column {
@@ -459,18 +475,6 @@ Item {
         anchors.fill: parent
         anchors.margins: Style.space(28)
         spacing: Style.space(14)
-
-        Text {
-          width: parent.width
-          text: "CHORD CIRCLE"
-          color: root.foreground
-          opacity: 0.55
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          font.bold: true
-          font.letterSpacing: 1.5
-          horizontalAlignment: Text.AlignHCenter
-        }
 
         Item {
           id: ring
@@ -827,7 +831,7 @@ Item {
         Rectangle {
           anchors.centerIn: parent
           width: Math.min(parent.width - Style.space(64), Style.space(680))
-          height: Style.space(590)
+          height: Style.space(620)
           radius: Math.max(Style.cornerRadius, Style.space(12))
           color: Color.popups.background
           border.color: Color.accent
@@ -845,10 +849,21 @@ Item {
 
             Text {
               width: parent.width
-              text: "VOCAL RANGE"
+              text: "SETTINGS"
               color: root.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              width: parent.width
+              text: "VOCAL RANGE"
+              color: root.foreground
+              opacity: 0.6
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
               font.bold: true
               horizontalAlignment: Text.AlignHCenter
             }
