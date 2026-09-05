@@ -26,7 +26,7 @@ Chord Circle runs as unsandboxed user code inside `omarchy-shell`. Review third-
 Install and enable the plugin from its public Git repository:
 
 ```bash
-omarchy plugin add https://github.com/nkarl/chord-circle.git --enable
+omarchy plugin add https://github.com/nkarl/omachords.git --enable
 ```
 
 Build the audio engine inside the installed checkout:
@@ -75,6 +75,10 @@ cargo build --release --manifest-path engine/Cargo.toml
 ```
 
 The compiled engine under `bin/` and Cargo build output are intentionally excluded from version control.
+
+## References and prior art
+
+Chord Circle grew from studying two enabled Omarchy plugins: [`max.piano` (Quick Piano)](https://github.com/JarlMaxi/omarchy-quick-piano) by Max Arvidsson informed its computer-keyboard instrument behavior, while [`io.github.markschellhas.circle-of-fifths` (Circle of Fifths)](https://github.com/markschellhas/omarchy-circle-of-fifths) by Mark Schellhas informed its circular tonal visualization. Chord Circle combines and extends those interaction ideas with independent preset and held-note layers, coordinated fifths and chromatic spaces, analytical chord coordinates, seventh chords, inversions, configurable mappings, and a persistent Rust/CPAL audio engine.
 
 ## License
 
