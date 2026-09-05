@@ -89,7 +89,7 @@ The center of the circle displays:
 
 Inversion may be displayed as a slash name such as `C/E` when a playback bass is selected, but it does not alter the nodes or edges.
 
-While computer keys are held, their pitch classes also appear as compact momentary labels at their strict chromatic positions inside the tonal circle. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
+While computer keys are held, their pitch classes also appear as compact momentary numerical coordinates at their strict chromatic positions inside the tonal circle. The coordinates run clockwise from `0` at C at the top through `11` at B, and each visible number corresponds directly to the simultaneously activated outer chromatic sector. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
 
 ## Plugin shape
 
@@ -150,7 +150,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Construct major, minor, diminished, and augmented triads from interval formulas.
 - Display the constructed chord name and active note names in the center.
 - Display scale-degree roles on active tonal nodes and show spelled notes, degree coordinates, and semitone coordinates in the center.
-- Show momentary held-note labels at chromatic positions inside the tonal circle.
+- Show momentary `0–11` held-note coordinates at chromatic positions inside the tonal circle, with `0` fixed at the top for C and matching outer-ring activation.
 - Treat inversions as the same structural chord.
 - Make root, first, and second inversion controls audition the persistent triad with the appropriate bass and slash label.
 

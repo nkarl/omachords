@@ -693,7 +693,7 @@ Item {
 
               Text {
                 anchors.centerIn: parent
-                text: parent.note.label
+                text: parent.note.pitch
                 color: root.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
