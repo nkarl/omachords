@@ -32,7 +32,7 @@ omarchy plugin add https://github.com/nkarl/omachords.git --enable
 Build the audio engine inside the installed checkout:
 
 ```bash
-cd ~/.config/omarchy/plugins/io.github.nkarl.omachords
+cd ~/.config/omarchy/plugins/nkarl.omachords
 cargo build --release --manifest-path engine/Cargo.toml
 mkdir -p bin
 install -m755 engine/target/release/chord-circle-engine bin/chord-circle-engine
@@ -46,14 +46,14 @@ The visualization remains usable if the engine is unavailable. An engine error a
 Open or close Chord Circle directly with:
 
 ```bash
-omarchy-shell shell toggle io.github.nkarl.omachords '{}'
+omarchy-shell shell toggle nkarl.omachords '{}'
 ```
 
 To use `Super` + `Shift` + `K`, add the following to `~/.config/hypr/bindings.lua`. This intentionally replaces Omarchy's existing action on that shortcut:
 
 ```lua
 hl.unbind("SUPER + SHIFT + K")
-o.bind("SUPER + SHIFT + K", "Chord Circle", "omarchy-shell shell toggle io.github.nkarl.omachords {}")
+o.bind("SUPER + SHIFT + K", "Chord Circle", "omarchy-shell shell toggle nkarl.omachords {}")
 ```
 
 Reload and check the Hyprland configuration:
@@ -74,7 +74,7 @@ The default keys ascend chromatically across `A W S E D F T G Y H U J K O L P ; 
 ## Removal
 
 ```bash
-omarchy plugin remove io.github.nkarl.omachords
+omarchy plugin remove nkarl.omachords
 ```
 
 ## Development
