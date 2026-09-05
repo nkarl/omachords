@@ -435,7 +435,7 @@ Item {
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "chord-circle"
+    WlrLayershell.namespace: "omachords"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.onDemandFocus ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
 
@@ -1024,7 +1024,7 @@ Item {
 
                 Text {
                   width: parent.width
-                  text: "Allow other windows to receive focus while Chord Circle remains open."
+                  text: "Allow other windows to receive focus while Omachords remains open."
                   color: root.foreground
                   opacity: 0.55
                   font.family: Style.font.family

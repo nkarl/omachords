@@ -9,7 +9,7 @@ QtObject {
   property bool ready: false
   property var pendingLines: []
 
-  readonly property string binaryPath: decodeURIComponent(Qt.resolvedUrl("bin/chord-circle-engine").toString().replace(/^file:\/\//, ""))
+  readonly property string binaryPath: decodeURIComponent(Qt.resolvedUrl("bin/omachords-engine").toString().replace(/^file:\/\//, ""))
 
   function queue(command) {
     var line = JSON.stringify(command) + "\n"
