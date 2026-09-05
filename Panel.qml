@@ -22,6 +22,7 @@ Item {
   property int rangeLowMidi: Model.DEFAULT_RANGE_LOW
   property int rangeHighMidi: Model.DEFAULT_RANGE_HIGH
   property var pianoKeys: defaultPianoKeys.slice(0)
+  property bool onDemandFocus: false
   property bool settingsOpen: false
   property int bindingCaptureIndex: -1
   property string audioStatus: "Choose an inversion to audition"
@@ -144,6 +145,18 @@ Item {
     return root.defaultPianoKeys.slice(0)
   }
 
+  function configuredOnDemandFocus() {
+    var config = root.shell ? root.shell.shellConfig : null
+    var plugins = config && Array.isArray(config.plugins) ? config.plugins : []
+    var pluginId = (root.manifest && root.manifest.id) || "local.chord-circle"
+    for (var i = 0; i < plugins.length; i++) {
+      var entry = plugins[i]
+      if (entry && entry.id === pluginId && entry.onDemandFocus !== undefined)
+        return entry.onDemandFocus === true
+    }
+    return false
+  }
+
   function sameKeyBindings(first, second) {
     return Model.sameKeyBindings(first, second)
   }
@@ -151,15 +164,17 @@ Item {
   function loadSettings() {
     var range = root.configuredMidiRange()
     var bindings = root.configuredKeyBindings()
-    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi && root.sameKeyBindings(bindings, root.pianoKeys))
+    var onDemand = root.configuredOnDemandFocus()
+    if (range.low === root.rangeLowMidi && range.high === root.rangeHighMidi && root.sameKeyBindings(bindings, root.pianoKeys) && onDemand === root.onDemandFocus)
       return
     root.silenceForRangeChange()
     root.rangeLowMidi = range.low
     root.rangeHighMidi = range.high
     root.pianoKeys = bindings
+    root.onDemandFocus = onDemand
   }
 
-  function persistMidiRange() {
+  function persistSettings() {
     if (!root.shell || typeof root.shell.updateEntryInline !== "function")
       return
     var config = root.shell.shellConfig
@@ -178,7 +193,19 @@ Item {
     settings.rangeLowMidi = root.rangeLowMidi
     settings.rangeHighMidi = root.rangeHighMidi
     settings.keyBindings = root.pianoKeys
+    settings.onDemandFocus = root.onDemandFocus
     root.shell.updateEntryInline(pluginId, settings)
+  }
+
+  function setOnDemandFocus(enabled) {
+    var next = enabled === true
+    if (next === root.onDemandFocus)
+      return
+    root.silenceForRangeChange()
+    root.onDemandFocus = next
+    root.audioStatus = next ? "On-demand focus enabled" : "Exclusive focus enabled"
+    root.persistSettings()
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
   function keyLabelForEvent(event) {
@@ -209,14 +236,14 @@ Item {
     root.pianoKeys = Model.rebindKey(root.pianoKeys, root.bindingCaptureIndex, replacement)
     root.bindingCaptureIndex = -1
     root.audioStatus = "Keyboard binding updated"
-    root.persistMidiRange()
+    root.persistSettings()
   }
 
   function resetKeyBindings() {
     root.pianoKeys = root.defaultPianoKeys.slice(0)
     root.bindingCaptureIndex = -1
     root.audioStatus = "Keyboard bindings reset"
-    root.persistMidiRange()
+    root.persistSettings()
   }
 
   function keyMapSummary() {
@@ -406,7 +433,8 @@ Item {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "chord-circle"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    WlrLayershell.keyboardFocus: root.onDemandFocus ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
+    onActiveChanged: if (!active && root.onDemandFocus) root.releaseAllKeys()
 
     MouseArea {
       anchors.fill: parent
@@ -909,7 +937,7 @@ Item {
         Rectangle {
           anchors.centerIn: parent
           width: Math.min(parent.width - Style.space(64), Style.space(680))
-          height: Style.space(620)
+          height: Style.space(720)
           radius: Math.max(Style.cornerRadius, Style.space(12))
           color: Color.popups.background
           border.color: Color.accent
@@ -933,6 +961,45 @@ Item {
               font.pixelSize: Style.font.body
               font.bold: true
               horizontalAlignment: Text.AlignHCenter
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(16)
+
+              Column {
+                width: parent.width - focusToggle.width - parent.spacing
+                spacing: Style.space(3)
+
+                Text {
+                  width: parent.width
+                  text: "ON-DEMAND FOCUS"
+                  color: root.foreground
+                  opacity: 0.72
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+
+                Text {
+                  width: parent.width
+                  text: "Allow other windows to receive focus while Chord Circle remains open."
+                  color: root.foreground
+                  opacity: 0.55
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                  wrapMode: Text.WordWrap
+                }
+              }
+
+              ToggleSwitch {
+                id: focusToggle
+                anchors.verticalCenter: parent.verticalCenter
+                checked: root.onDemandFocus
+                foreground: root.foreground
+                accent: root.activeColor
+                onToggled: root.setOnDemandFocus(!root.onDemandFocus)
+              }
             }
 
             Text {
@@ -979,8 +1046,8 @@ Item {
               second.value: root.rangeHighMidi
               first.onMoved: root.setRangeLower(Math.round(first.value))
               second.onMoved: root.setRangeUpper(Math.round(second.value))
-              first.onPressedChanged: if (!first.pressed) root.persistMidiRange()
-              second.onPressedChanged: if (!second.pressed) root.persistMidiRange()
+              first.onPressedChanged: if (!first.pressed) root.persistSettings()
+              second.onPressedChanged: if (!second.pressed) root.persistSettings()
 
               background: Rectangle {
                 x: rangeSlider.leftPadding
