@@ -16,8 +16,8 @@ Omachords is an educational chord explorer and playable computer-keyboard instru
 ## Requirements
 
 - Omarchy Quattro with `omarchy-shell` plugin support.
-- PipeWire and a working system audio output.
-- Rust and Cargo to build the audio engine. The marketplace installer does not execute build hooks, so this one manual build step is required after installation or update.
+- PipeWire, PipeWire's ALSA support, and a working system audio output.
+- Rust, Cargo, `alsa-lib`, and `pkgconf` to build the audio engine. Install them on Omarchy with `omarchy pkg add rust alsa-lib pkgconf` if needed.
 
 Omachords runs as unsandboxed user code inside `omarchy-shell`. Review third-party plugin source before enabling it.
 
@@ -29,15 +29,13 @@ Install and enable the plugin from its public Git repository:
 omarchy plugin add https://github.com/nkarl/omachords.git --enable
 ```
 
-Build the audio engine inside the installed checkout:
+Run the setup script. It builds the audio engine, enables the plugin, and configures `Super` + `Shift` + `K` unless that shortcut is already customized:
 
 ```bash
-cd ~/.config/omarchy/plugins/nkarl.omachords
-cargo build --release --manifest-path engine/Cargo.toml
-mkdir -p bin
-install -m755 engine/target/release/omachords-engine bin/omachords-engine
-omarchy restart shell
+~/.config/omarchy/plugins/nkarl.omachords/install.sh
 ```
+
+Use `install.sh --no-shortcut` to build and enable Omachords without changing Hyprland bindings. The script backs up `bindings.lua` before adding its marked shortcut block. If the shortcut already has a user-defined binding, the script leaves it untouched and prints the direct toggle command instead.
 
 The visualization remains usable if the engine is unavailable. An engine error appears in the overlay, and another audio attempt occurs only after a new note or inversion action; failures never trigger an automatic restart loop.
 
@@ -49,7 +47,7 @@ Open or close Omachords directly with:
 omarchy-shell shell toggle nkarl.omachords '{}'
 ```
 
-To use `Super` + `Shift` + `K`, add the following to `~/.config/hypr/bindings.lua`. This intentionally replaces Omarchy's existing action on that shortcut:
+The setup script assigns `Super` + `Shift` + `K` by adding the following marked override to `~/.config/hypr/bindings.lua`. It replaces Omarchy's stock action but never replaces another customization detected in that file:
 
 ```lua
 hl.unbind("SUPER + SHIFT + K")
@@ -74,8 +72,10 @@ The default keys ascend chromatically across `A W S E D F T G Y H U J K O L P ; 
 ## Removal
 
 ```bash
-omarchy plugin remove nkarl.omachords
+~/.config/omarchy/plugins/nkarl.omachords/uninstall.sh
 ```
+
+The removal script deletes only its marked shortcut block, keeps a backup of `bindings.lua`, validates Hyprland, and then delegates plugin removal to Omarchy.
 
 ## Development
 
@@ -90,6 +90,7 @@ node --test tests/model.test.mjs
 QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input tests
 cargo test --manifest-path engine/Cargo.toml
 cargo build --release --manifest-path engine/Cargo.toml
+bash -n install.sh uninstall.sh
 ```
 
 The compiled engine under `bin/` and Cargo build output are intentionally excluded from version control.
