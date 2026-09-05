@@ -66,7 +66,7 @@ settings.keyBindings   ordered one-to-one map of physical keys to range position
 revision               monotonically increasing change identifier
 ```
 
-Selecting a root or quality updates the persistent triad atomically. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
+Selecting a root or quality updates the persistent triad atomically. Quality uses an optional exclusive selection: clicking the active quality toggles it off, clears the persistent chord while preserving the root, and disables inversion auditions until another quality is selected. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
 
 Keyboard input preserves Quick Piano's physical layout and extends it to 31 contiguous semitones. Notes ascend across `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
 
@@ -148,6 +148,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 ### Chord identity
 
 - Construct major, minor, diminished, and augmented triads from interval formulas.
+- Allow the active quality to toggle off without clearing the selected root, and disable inversion auditions while no quality is active.
 - Display the constructed chord name and active note names in the center.
 - Display scale-degree roles on active tonal nodes and show spelled notes, degree coordinates, and semitone coordinates in the center.
 - Show momentary `0–11` held-note coordinates at chromatic positions inside the tonal circle, with `0` fixed at the top for C and matching outer-ring activation.

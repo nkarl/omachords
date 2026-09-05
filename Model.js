@@ -94,6 +94,10 @@ function qualityAt(index) {
   return QUALITIES[wrap(index, QUALITIES.length)]
 }
 
+function toggleExclusiveIndex(current, requested) {
+  return Number(current) === Number(requested) ? -1 : Math.round(Number(requested))
+}
+
 function inversionAt(index) {
   return INVERSIONS[wrap(index, INVERSIONS.length)]
 }

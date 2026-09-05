@@ -53,7 +53,14 @@ Item {
     }
     return notes
   }
-  readonly property var selectedChord: Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex)
+  readonly property var selectedChord: root.qualityIndex >= 0 ? Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex) : {
+    rootPitch: Model.noteAt(root.rootIndex).pitch,
+    pitches: [],
+    label: Model.noteAt(root.rootIndex).label,
+    noteNames: "Choose a quality",
+    degreeNames: "",
+    semitoneNames: ""
+  }
   readonly property var heldTriad: Model.identifyTriad(root.heldPitches, root.heldBass)
   readonly property string heldSummary: root.heldPitches.length === 0 ? "Press any piano key" : root.heldTriad ? "Held: " + root.heldTriad.label : "Held: " + Model.pitchSetNames(root.heldPitches)
   readonly property color gridColor: Util.alpha(root.foreground, 0.30)
@@ -256,8 +263,8 @@ Item {
 
   function setSelection(nextRoot, nextQuality, nextInversion) {
     var normalizedRoot = Model.wrap(nextRoot, Model.FIFTHS.length)
-    var normalizedQuality = Model.wrap(nextQuality, Model.QUALITIES.length)
-    var normalizedInversion = Model.wrap(nextInversion, Model.INVERSIONS.length)
+    var normalizedQuality = nextQuality < 0 ? -1 : Model.wrap(nextQuality, Model.QUALITIES.length)
+    var normalizedInversion = normalizedQuality < 0 ? 0 : Model.wrap(nextInversion, Model.INVERSIONS.length)
     if (normalizedRoot === root.rootIndex && normalizedQuality === root.qualityIndex && normalizedInversion === root.inversionIndex)
       return false
 
@@ -274,10 +281,21 @@ Item {
   }
 
   function selectQuality(index) {
-    root.setSelection(root.rootIndex, index, root.inversionIndex)
+    var nextQuality = Model.toggleExclusiveIndex(root.qualityIndex, index)
+    if (!root.setSelection(root.rootIndex, nextQuality, root.inversionIndex))
+      return
+    if (nextQuality < 0) {
+      engine.stop(root.revision)
+      playFlash.stop()
+      root.audioStatus = "Choose a quality"
+    }
   }
 
   function auditionInversion(index) {
+    if (root.qualityIndex < 0) {
+      root.audioStatus = "Choose a quality before auditioning"
+      return
+    }
     var changed = root.setSelection(root.rootIndex, root.qualityIndex, index)
     if (!changed)
       root.revision += 1
@@ -731,6 +749,7 @@ Item {
             Text {
               width: parent.width
               text: root.selectedChord.degreeNames
+              visible: root.qualityIndex >= 0
               color: root.activeColor
               opacity: 0.92
               font.family: Style.font.family
@@ -742,6 +761,7 @@ Item {
             Text {
               width: parent.width
               text: root.selectedChord.semitoneNames + " st"
+              visible: root.qualityIndex >= 0
               color: root.foreground
               opacity: 0.58
               font.family: Style.font.family
@@ -829,6 +849,7 @@ Item {
                   required property int index
                   text: modelData.label + "  ▶"
                   selected: playFlash.running && index === root.inversionIndex
+                  enabled: root.qualityIndex >= 0
                   bordered: true
                   foreground: root.foreground
                   fontFamily: Style.font.family

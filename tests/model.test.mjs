@@ -55,6 +55,12 @@ test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 3, 0).pitches), [0, 4, 8])
 })
 
+test("exclusive quality controls can toggle the active choice off", () => {
+  assert.equal(model.toggleExclusiveIndex(0, 0), -1)
+  assert.equal(model.toggleExclusiveIndex(-1, 0), 0)
+  assert.equal(model.toggleExclusiveIndex(0, 2), 2)
+})
+
 test("chords expose scale-degree and semitone analysis", () => {
   const major = model.chord(0, 0, 0)
   assert.equal(major.degreeNames, "1 · 3 · 5")
