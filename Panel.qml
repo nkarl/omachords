@@ -399,7 +399,7 @@ Item {
                 height: width
                 radius: width / 2
                 color: preset ? root.activeColor : held ? root.foreground : index === ring.hoverIndex ? Util.alpha(root.foreground, 0.12) : Color.popups.background
-                border.width: selectedRoot ? 3 : preset || held ? 2 : 1
+                border.width: selectedRoot ? 5 : preset || held ? 2 : 1
                 border.color: selectedRoot ? root.foreground : preset ? root.activeColor : held ? root.foreground : root.gridColor
 
                 Column {
