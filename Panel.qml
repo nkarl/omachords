@@ -254,7 +254,7 @@ Item {
         Item {
           id: ring
           width: parent.width
-          height: Math.min(width, card.height - Style.space(300))
+          height: Math.min(width, card.height - Style.space(250))
           property int hoverIndex: -1
           readonly property real cx: width / 2
           readonly property real cy: height / 2
@@ -481,72 +481,80 @@ Item {
           }
         }
 
-        Column {
+        Row {
           anchors.horizontalCenter: parent.horizontalCenter
-          spacing: Style.space(6)
+          width: Math.min(parent.width, Style.space(900))
+          spacing: Style.space(36)
 
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "QUALITY"
-            color: root.foreground
-            opacity: 0.55
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            font.bold: true
-          }
+          Column {
+            width: (parent.width - parent.spacing) / 2
+            spacing: Style.space(6)
 
-          Row {
-            spacing: Style.space(5)
-            Repeater {
-              model: Model.QUALITIES
-              delegate: Button {
-                required property var modelData
-                required property int index
-                text: modelData.label
-                selected: index === root.qualityIndex
-                bordered: true
-                foreground: root.foreground
-                fontFamily: Style.font.family
-                fontSize: Style.font.bodySmall
-                onClicked: {
-                  root.selectQuality(index)
-                  keyCatcher.forceActiveFocus()
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "QUALITY"
+              color: root.foreground
+              opacity: 0.55
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: Style.space(5)
+              Repeater {
+                model: Model.QUALITIES
+                delegate: Button {
+                  required property var modelData
+                  required property int index
+                  text: modelData.label
+                  selected: index === root.qualityIndex
+                  bordered: true
+                  foreground: root.foreground
+                  fontFamily: Style.font.family
+                  fontSize: Style.font.bodySmall
+                  onClicked: {
+                    root.selectQuality(index)
+                    keyCatcher.forceActiveFocus()
+                  }
                 }
               }
             }
           }
-        }
 
-        Column {
-          anchors.horizontalCenter: parent.horizontalCenter
-          spacing: Style.space(6)
+          Column {
+            width: (parent.width - parent.spacing) / 2
+            spacing: Style.space(6)
 
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "INVERSION"
-            color: root.foreground
-            opacity: 0.55
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            font.bold: true
-          }
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "INVERSION"
+              color: root.foreground
+              opacity: 0.55
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
 
-          Row {
-            spacing: Style.space(5)
-            Repeater {
-              model: Model.INVERSIONS
-              delegate: Button {
-                required property var modelData
-                required property int index
-                text: modelData.label + "  ▶"
-                selected: playFlash.running && index === root.inversionIndex
-                bordered: true
-                foreground: root.foreground
-                fontFamily: Style.font.family
-                fontSize: Style.font.bodySmall
-                onClicked: {
-                  root.auditionInversion(index)
-                  keyCatcher.forceActiveFocus()
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: Style.space(5)
+              Repeater {
+                model: Model.INVERSIONS
+                delegate: Button {
+                  required property var modelData
+                  required property int index
+                  text: modelData.label + "  ▶"
+                  selected: playFlash.running && index === root.inversionIndex
+                  bordered: true
+                  foreground: root.foreground
+                  fontFamily: Style.font.family
+                  fontSize: Style.font.bodySmall
+                  onClicked: {
+                    root.auditionInversion(index)
+                    keyCatcher.forceActiveFocus()
+                  }
                 }
               }
             }

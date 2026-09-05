@@ -142,6 +142,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 - Support mouse selection and keyboard navigation.
 - Provide visible hover and keyboard-focus states.
+- Place the Quality and Inversion control groups side by side so they consume one shared horizontal control row.
 - Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
