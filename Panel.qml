@@ -792,7 +792,7 @@ Item {
 
             Text {
               width: parent.width
-              text: root.selectedChord.semitoneNames + " st"
+              text: root.selectedChord.semitoneNames
               visible: root.qualityIndex >= 0
               color: root.foreground
               opacity: 0.58

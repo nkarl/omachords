@@ -87,7 +87,7 @@ The center of the circle displays:
 - The constructed chord name, such as `C major` or `A minor`.
 - The active note names, such as `C · E · G`.
 - The scale-degree coordinates, such as `1 · 3 · 5`.
-- The chromatic interval coordinates, such as `0 · 4 · 7 st`.
+- The chromatic interval coordinates without a unit suffix, such as `0 · 4 · 7`.
 
 Inversion may be displayed as a slash name such as `C/E` when a playback bass is selected, but it does not alter the nodes or edges.
 
