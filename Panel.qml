@@ -330,7 +330,7 @@ Item {
                 if (held)
                   drawChromaticBlock(ctx, pitch, heldFill, heldBorder, 2)
                 if (pitch === root.selectedChord.rootPitch)
-                  outlineChromaticBlock(ctx, pitch, rootBorder, 2.5)
+                  outlineChromaticBlock(ctx, pitch, rootBorder, 5)
               }
               ctx.strokeStyle = root.quietColor
               ctx.lineWidth = 1.5
