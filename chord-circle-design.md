@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. This document defines the product and implementation direction but does not authorize implementation.
+Implemented through Milestone 2. This document records the product contract, architecture, and failure policy.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 - Show similarities and differences between consecutive chords.
 - Play all active notes as one synchronized chord through a stable audio stream.
 - Sustain common tones smoothly when the chord changes.
-- Fit naturally into the Omarchy Quattro bar-and-panel interaction model.
+- Fit naturally into the Omarchy Quattro overlay model while remaining independent of the bar.
 
 ## Non-goals
 
@@ -134,7 +134,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 - Support mouse selection and keyboard navigation.
 - Provide visible hover and keyboard-focus states.
-- Make Escape close the panel through the standard Quattro panel behavior.
+- Make Escape close the overlay through the standard Quattro overlay behavior.
 - Prevent key auto-repeat from applying repeated toggles.
 - Derive colors, spacing, and typography from Omarchy style primitives.
 - Avoid encoding state by color alone.
@@ -162,7 +162,7 @@ user action
   → recompute the chord label and graph
 ```
 
-Pressing an inversion button sends the current preset's three derived pitch classes and inversion-derived bass to the engine adapter in one `setChord` call. Root and quality selection do not play automatically. Hover and focus are transient presentation changes and must not create engine commands.
+Pressing an inversion button sends the current preset's complete MIDI voicing to the engine adapter in one `audition` call. Root and quality selection do not play automatically. Hover and focus are transient presentation changes and must not create engine commands.
 
 ## UI tests
 
@@ -174,7 +174,7 @@ Pressing an inversion button sends the current preset's three derived pitch clas
 - Triad construction for every root and supported quality.
 - Inversion-invariant pitch-class graphs and inversion-specific bass values.
 - Graph edge generation for every supported triad.
-- One atomic `setChord` command per inversion-button action, containing the current revision, all three pitches, and the bass.
+- One atomic `audition` command per inversion-button action, containing the current revision, all three concrete MIDI notes, and the duration.
 - Direct node hit targets and hover behavior.
 - Keyboard navigation and auto-repeat rejection.
 
@@ -236,6 +236,8 @@ Example status messages:
 
 The control path publishes held and audition notes through atomic MIDI bitsets. The realtime callback reads those bitsets at buffer boundaries, so JSON parsing, allocation, process management, and mutex locking stay outside the audio path. Held notes and timed auditions are independent sources whose union drives the voices.
 
+Preset voicings start from the selected root in the C4–B4 range. Root position places the other chord tones above it; first inversion raises the root by one octave; second inversion also raises the original third by one octave. This keeps each audition ascending while preserving the same three pitch classes.
+
 ## Synthesis behavior
 
 - Use one oscillator state per MIDI note.
@@ -254,13 +256,21 @@ The initial timbre should be deliberately simple and stable. A sine wave with a 
 - Start lazily on the first play request.
 - Wait for a `ready` event before treating audio as available.
 - Queue commands until the engine reports `ready`.
-- Send `stop` when playback is disabled or the panel requests silence.
-- Send `shutdown` when the plugin is unloaded, then terminate after a short grace period if necessary.
+- Send `stop` when playback is disabled or the overlay requests silence.
+- Send `shutdown` when the plugin is unloaded and terminate the process as part of teardown.
 - Detect unexpected engine exit and show a non-blocking unavailable state.
 - Restart only when a later user action requests audio; avoid an automatic crash loop.
 - Guarantee that at most one synth process and one CPAL stream belong to the plugin.
 
-Closing the panel should default to silencing the chord while keeping the synth process available for the next opening. Plugin unload must end both processes.
+Closing the overlay silences held notes while keeping the synth process available for the next opening. Plugin unload must end the engine process and its CPAL stream.
+
+### Failure containment and user-triggered recovery
+
+The engine adapter treats a failed process as unavailable state, not as a signal to start another process automatically. Startup errors, engine stderr, malformed responses, CPAL stream errors, and nonzero exits are surfaced in the overlay while the visual model remains fully usable. A CPAL stream error is fatal to that engine instance so an unusable process cannot remain marked as the active owner of audio.
+
+On exit, the adapter clears readiness and queued startup commands. Discarding the queue is important: commands describe momentary physical state and timed auditions, so replaying them during a later launch could produce notes the user no longer holds. The next keyboard transition sends the complete current held-note set, and the next inversion action sends a complete new audition; either is sufficient to reconstruct valid audio state.
+
+No timer, recursive exit handler, or supervisor restarts the engine. A later user audio action may start one replacement process, but an idle failed plugin starts none. Repeated startup failures consequently require repeated user actions and cannot become an automatic crash loop. This bounds process creation, keeps the failure visible, and preserves silent use of the chord visualization.
 
 ## Audio/UI integration
 
@@ -301,7 +311,6 @@ Milestone 1 defines the musical state and the complete user interaction. Its moc
 
 Milestone 1 is complete when the overlay is independently useful and validated. Milestone 2 is complete when the native adapter is integrated, the audio lifecycle passes its tests, and sustained chord changes are audibly smooth.
 
-## Open design decisions
+## Deferred design decision
 
-- The concrete MIDI register assigned to each inversion.
-- Whether closing the panel always silences playback or a user setting may allow continued sound.
+- Whether a future user setting should allow playback to continue after the overlay closes.

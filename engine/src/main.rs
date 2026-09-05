@@ -212,7 +212,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             let now_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
             synth.render(output, &audio_state, now_ms);
         },
-        |error| eprintln!("audio stream error: {error}"),
+        |error| {
+            eprintln!("audio stream error: {error}");
+            std::process::exit(1);
+        },
         None,
     )?;
     stream.play()?;

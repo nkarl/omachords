@@ -58,6 +58,7 @@ QtObject {
         root.flush()
       } else if (message.event === "applied") {
         root.status = "playing"
+        root.detail = "Audio active"
       } else if (message.event === "error") {
         root.status = "error"
         root.detail = String(message.message || "Audio engine error")
@@ -87,6 +88,7 @@ QtObject {
     }
     onExited: function(exitCode) {
       root.ready = false
+      root.pendingLines = []
       root.status = exitCode === 0 ? "idle" : "error"
       root.detail = exitCode === 0 ? "Engine stopped" : "Engine exited with code " + exitCode
     }

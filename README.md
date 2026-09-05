@@ -22,3 +22,22 @@ qmllint -I /usr/share/omarchy/shell Panel.qml EngineAdapter.qml MockEngine.qml
 ```
 
 The compiled binary is intentionally ignored by Git. Build and install it into `bin/` before running the plugin.
+
+## Audio engine
+
+The overlay starts `bin/chord-circle-engine` lazily when the first keyboard note or inversion audition requests audio. The Rust process owns one CPAL output stream and 128 fixed MIDI voice slots. Its realtime callback reads atomic held-note and audition-note bitsets, preserves oscillator phase, applies 10 ms attack and 45 ms release envelopes, and mixes a restrained three-harmonic waveform. JSON parsing, allocation, process control, and UI communication remain outside the audio callback.
+
+Keyboard notes and inversion auditions are independent sound sources. `set_held` replaces the complete set of physically held MIDI notes and sustains them indefinitely. `audition` adds a concrete inversion voicing for 900 ms. The callback plays the union, so releasing a keyboard key cannot cancel an active inversion audition. Closing the overlay sends `stop`, which clears both sources while leaving the engine available for the next use.
+
+### Failure and restart policy
+
+Engine failure is deliberately passive and user-driven:
+
+- A startup failure, CPAL stream failure, malformed engine response, stderr diagnostic, or nonzero process exit is shown in the overlay's status line. Visual chord exploration continues because UI state does not depend on audio availability.
+- A CPAL runtime stream error terminates the failed engine process. The adapter does not leave a nominally running but unusable process behind.
+- When the process exits, the adapter marks it unavailable and discards queued startup commands so a later launch cannot replay stale notes or auditions.
+- There is no restart timer, recursive callback, retry counter, or background supervisor. An unchanged failure therefore produces zero additional processes.
+- The next physical note transition or inversion-button press may request audio again. That action starts at most one new process and queues its current complete command until the new engine emits `ready`.
+- If startup fails repeatedly, each failure requires another explicit user audio action. The plugin never creates a self-sustaining crash loop or process storm.
+
+This policy favors predictable resource use over seamless automatic recovery. It also makes failures observable instead of hiding them behind repeated retries.
