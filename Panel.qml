@@ -18,7 +18,7 @@ Item {
   property var heldKeys: ({})
   property var heldPitches: []
   property int heldBass: -1
-  property string mockStatus: "Engine deferred · Choose an inversion to audition"
+  property string audioStatus: "Choose an inversion to audition"
 
   readonly property color foreground: Color.foreground
 
@@ -52,6 +52,8 @@ Item {
 
   function close() {
     root.releaseAllKeys()
+    root.revision += 1
+    engine.stop(root.revision)
     root.opened = false
   }
 
@@ -96,8 +98,8 @@ Item {
     if (!changed)
       root.revision += 1
     var chord = Model.chord(root.rootIndex, root.qualityIndex, index)
-    engine.setChord(root.revision, chord.pitches, chord.bass)
-    root.mockStatus = "Queued " + chord.label + " · " + chord.inversionLabel + " inversion"
+    engine.audition(root.revision, Model.midiVoicing(root.rootIndex, root.qualityIndex, index), 900)
+    root.audioStatus = "Auditioning " + chord.label + " · " + chord.inversionLabel + " inversion"
     playFlash.restart()
   }
 
@@ -119,12 +121,12 @@ Item {
     root.heldBass = state.bass
     root.revision += 1
     if (state.pitches.length > 0) {
-      engine.setChord(root.revision, state.pitches, root.heldBass)
+      engine.setHeld(root.revision, state.midiNotes)
       var identified = Model.identifyTriad(state.pitches, root.heldBass)
-      root.mockStatus = "Held " + (identified ? identified.label : Model.pitchSetNames(state.pitches))
+      root.audioStatus = "Held " + (identified ? identified.label : Model.pitchSetNames(state.pitches))
     } else {
-      engine.stopChord(root.revision)
-      root.mockStatus = "All keys released"
+      engine.setHeld(root.revision, [])
+      root.audioStatus = "All keys released"
     }
     graph.requestPaint()
     return state
@@ -157,14 +159,14 @@ Item {
   onHeldPitchesChanged: graph.requestPaint()
   onOpenedChanged: if (!root.opened) root.releaseAllKeys()
 
-  MockEngine {
+  EngineAdapter {
     id: engine
   }
 
   Timer {
     id: playFlash
     interval: 1200
-    onTriggered: root.mockStatus = "Engine deferred · Choose an inversion to audition"
+    onTriggered: root.audioStatus = "Choose an inversion to audition"
   }
 
   PanelWindow {
@@ -468,7 +470,7 @@ Item {
 
         Text {
           width: parent.width
-          text: root.mockStatus
+          text: root.audioStatus + " · " + engine.detail
           color: root.foreground
           opacity: playFlash.running ? 0.9 : 0.5
           font.family: Style.font.family

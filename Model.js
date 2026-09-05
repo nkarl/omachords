@@ -157,15 +157,31 @@ function heldPitchState(entries) {
   var sorted = (entries || []).slice(0)
   sorted.sort(function(a, b) { return a.midi - b.midi })
   var pitches = []
+  var midiNotes = []
   for (var i = 0; i < sorted.length; i++) {
+    midiNotes.push(sorted[i].midi)
     var pitch = wrap(sorted[i].midi, 12)
     if (!contains(pitches, pitch))
       pitches.push(pitch)
   }
   return {
     pitches: pitches,
-    bass: sorted.length > 0 ? wrap(sorted[0].midi, 12) : -1
+    bass: sorted.length > 0 ? wrap(sorted[0].midi, 12) : -1,
+    midiNotes: midiNotes
   }
+}
+
+function midiVoicing(rootIndex, qualityIndex, inversionIndex) {
+  var root = noteAt(rootIndex)
+  var quality = qualityAt(qualityIndex)
+  var inversion = wrap(inversionIndex, quality.intervals.length)
+  var rootMidi = 60 + root.pitch
+  var notes = []
+  for (var i = inversion; i < quality.intervals.length; i++)
+    notes.push(rootMidi + quality.intervals[i])
+  for (var j = 0; j < inversion; j++)
+    notes.push(rootMidi + quality.intervals[j] + 12)
+  return notes
 }
 
 function updateHeldKeys(heldKeys, key, note, pressed, autoRepeat) {

@@ -49,6 +49,9 @@ test("inversion changes bass and label but not the pitch-class graph", () => {
   assert.equal(second.bass, 7)
   assert.equal(first.label, "C/E")
   assert.equal(second.label, "C/G")
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 0)), [60, 64, 67])
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 1)), [64, 67, 72])
+  assert.deepEqual(Array.from(model.midiVoicing(0, 0, 2)), [67, 72, 76])
 })
 
 test("held pitch classes are identified independently of key order", () => {

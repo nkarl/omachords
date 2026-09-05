@@ -23,20 +23,32 @@ QtObject {
     return root.record({ v: 1, cmd: "start" })
   }
 
-  function setChord(revision, pitches, bass) {
+  function setHeld(revision, notes) {
     if (!root.running)
       root.start()
     root.status = "applied"
     return root.record({
       v: 1,
-      cmd: "set_chord",
+      cmd: "set_held",
       revision: revision,
-      pitches: pitches.slice(0),
-      bass: bass
+      notes: notes.slice(0)
     })
   }
 
-  function stopChord(revision) {
+  function audition(revision, notes, durationMs) {
+    if (!root.running)
+      root.start()
+    root.status = "applied"
+    return root.record({
+      v: 1,
+      cmd: "audition",
+      revision: revision,
+      notes: notes.slice(0),
+      duration_ms: durationMs
+    })
+  }
+
+  function stop(revision) {
     root.status = "stopped"
     return root.record({ v: 1, cmd: "stop", revision: revision })
   }

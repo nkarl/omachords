@@ -86,7 +86,9 @@ Suggested files after implementation begins:
 manifest.json
 Panel.qml
 Model.js
-synth.py
+EngineAdapter.qml
+engine/Cargo.toml
+engine/src/main.rs
 tests/
 ```
 
@@ -139,16 +141,15 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 
 ### Engine boundary
 
-Define UI calls without implementing sound:
+The UI-to-engine boundary exposes:
 
 ```text
-engine.start()
-engine.setChord(revision, pitches, bass)
-engine.stopChord(revision)
-engine.shutdown()
+engine.setHeld(revision, midiNotes)
+engine.audition(revision, midiNotes, durationMs)
+engine.stop(revision)
 ```
 
-During this milestone, a mock adapter records commands and exposes engine status to the UI. No detached player processes should be introduced as a temporary audio solution.
+A mock adapter tests this boundary independently of the native engine.
 
 ## UI state transitions
 
@@ -185,38 +186,32 @@ Pressing an inversion button sends the current preset's three derived pitch clas
 - Releasing one of two held octave-equivalent keys leaves their shared node active.
 - Three active pitch classes produce exactly three undirected edges.
 - Changing the root or quality changes the graph and label in one visible action.
-- Moving between two chords clearly identifies shared and changed structure.
 - The overlay validates as an Omarchy plugin and scales within the active output while remaining independent of bar position and orientation.
-- The mock engine log proves that each inversion audition sends the complete chord state atomically.
+- The mock engine log proves that each inversion audition sends one complete MIDI voicing atomically.
 
 ## Explicitly deferred
 
-- Sound generation.
-- PipeWire process management.
-- Attack, sustain, and release behavior.
-- Audio recovery and shutdown behavior.
-- Free-form note activation, seventh chords, extensions, and clusters.
+- Free-form preset construction, seventh chords, extensions, and clusters.
 
 # Milestone 2: Persistent Synth Engine
 
 ## Outcome
 
-Replace the mock adapter with one persistent synth process that plays the complete pitch-class set through one continuous PipeWire stream, without the fixed-duration and per-note process behavior of Quick Piano.
+Use one persistent Rust synth process and one CPAL output stream, without the fixed-duration and per-note process behavior of Quick Piano.
 
 ## Process architecture
 
-Quickshell starts one `synth.py` process when audio is first needed. The synth starts and owns one long-lived raw PCM player, preferably `pw-play`, and continuously writes mixed audio frames to it. Quickshell does not spawn a player for each note or chord.
+Quickshell starts one `chord-circle-engine` process when audio is first needed. CPAL owns one long-lived callback-driven output stream that reaches the system PipeWire service through the Linux audio stack. Quickshell does not spawn a player for each note or chord.
 
 ```text
-Quickshell panel
+Quickshell overlay
   ↔ command/status channel
-persistent synth.py
-  → one raw PCM stream
-persistent pw-play
+persistent Rust engine
+  → one CPAL audio stream
   → PipeWire
 ```
 
-The synth maintains up to twelve internal pitch-class voices. These are oscillator and envelope states inside one process, not operating-system processes and not independently scheduled PipeWire streams.
+The synth maintains 128 fixed MIDI voice slots. These are oscillator and envelope states inside one process, not operating-system processes and not independently scheduled audio streams.
 
 ## Command protocol
 
@@ -225,7 +220,8 @@ Use newline-delimited JSON over standard input and standard output. Commands mus
 Example commands:
 
 ```json
-{"v":1,"cmd":"set_chord","revision":12,"pitches":[0,4,7],"bass":0}
+{"v":1,"cmd":"set_held","revision":12,"notes":[60,64,67]}
+{"v":1,"cmd":"audition","revision":13,"notes":[64,67,72],"duration_ms":900}
 {"v":1,"cmd":"stop","revision":13}
 {"v":1,"cmd":"shutdown"}
 ```
@@ -233,22 +229,22 @@ Example commands:
 Example status messages:
 
 ```json
-{"v":1,"event":"ready"}
+{"event":"ready","rate":48000,"channels":2}
 {"v":1,"event":"applied","revision":12}
-{"v":1,"event":"error","message":"pw-play exited"}
+{"event":"error","message":"audio stream unavailable"}
 ```
 
-`set_chord` is atomic: all added and removed pitches enter their envelope transitions at the same audio-frame boundary. Duplicate pitches are rejected or normalized before application. A stale revision must not replace a newer chord.
+The control path publishes held and audition notes through atomic MIDI bitsets. The realtime callback reads those bitsets at buffer boundaries, so JSON parsing, allocation, process management, and mutex locking stay outside the audio path. Held notes and timed auditions are independent sources whose union drives the voices.
 
 ## Synthesis behavior
 
-- Use one oscillator state per active pitch class.
-- Assign a deterministic playback octave to each pitch class, with optional bass placement stored separately from graph identity.
+- Use one oscillator state per MIDI note.
+- Use concrete ascending MIDI voicings for root position, first inversion, and second inversion.
 - Start added pitches with a short click-free attack.
 - Move removed pitches through a short release rather than cutting them immediately.
 - Keep unchanged pitches active without resetting phase or envelope.
 - Normalize or limit aggregate gain according to active-note count.
-- End every released oscillator at or near a zero crossing through its envelope.
+- End every released oscillator smoothly through its envelope.
 - Render fixed-size blocks continuously rather than precomputing a fixed-duration sample.
 
 The initial timbre should be deliberately simple and stable. A sine wave with a restrained harmonic component is preferable to detuned oscillators until overlap, clipping, and long-duration behavior are proven clean.
@@ -257,22 +253,22 @@ The initial timbre should be deliberately simple and stable. A sine wave with a 
 
 - Start lazily on the first play request.
 - Wait for a `ready` event before treating audio as available.
-- Send the latest complete chord after startup or restart.
+- Queue commands until the engine reports `ready`.
 - Send `stop` when playback is disabled or the panel requests silence.
 - Send `shutdown` when the plugin is unloaded, then terminate after a short grace period if necessary.
-- Detect unexpected synth or `pw-play` exit and show a non-blocking unavailable state.
-- Permit one bounded automatic restart; avoid an unlimited crash loop.
-- Guarantee that at most one synth worker and one child player belong to the plugin.
+- Detect unexpected engine exit and show a non-blocking unavailable state.
+- Restart only when a later user action requests audio; avoid an automatic crash loop.
+- Guarantee that at most one synth process and one CPAL stream belong to the plugin.
 
 Closing the panel should default to silencing the chord while keeping the synth process available for the next opening. Plugin unload must end both processes.
 
 ## Audio/UI integration
 
-- An inversion audition sends exactly one `set_chord` command for the current UI revision.
+- An inversion audition sends exactly one `audition` command for the current UI revision.
 - The visible sounding state follows the last acknowledged revision, not merely the last requested revision.
 - Audio failure must not prevent silent chord exploration.
-- Rapid edits may coalesce before transmission, but the engine must never receive a partially updated chord.
-- The UI should expose a clear sound toggle and a compact engine-error indicator.
+- Commands issued during startup queue until the ready event.
+- The UI exposes compact engine status and errors.
 
 ## Engine tests
 
@@ -285,8 +281,8 @@ Closing the panel should default to silencing the chord while keeping the synth 
 - Gain behavior and clipping prevention at maximum activation.
 - Indefinite sustain without a 1.8-second or other fixed cutoff.
 - Rapid chord replacement and stop/start sequences.
-- Broken pipe, player exit, engine restart, and graceful shutdown.
-- No orphan synth or `pw-play` process after plugin unload.
+- Broken pipe, engine exit, lazy restart, and graceful shutdown.
+- No orphan engine process after plugin unload.
 
 ## Acceptance criteria
 
@@ -295,15 +291,15 @@ Closing the panel should default to silencing the chord while keeping the synth 
 - Common tones remain continuous when changing between related chords.
 - Added and removed notes transition without audible clicks or screeching.
 - Twelve active pitch classes do not clip under the default gain policy.
-- Rapid UI changes do not create overlapping synth or `pw-play` processes.
+- Rapid UI changes do not create overlapping synth processes or streams.
 - Only one synth worker and one audio stream exist during normal operation.
-- Killing the audio player produces a visible error and bounded recovery rather than a silent process storm.
+- Killing the engine produces a visible error and the next audio action can start one replacement process.
 
 ## Milestone dependency and delivery boundary
 
 Milestone 1 defines the musical state and the complete user interaction. Its mock engine contract is the sole integration boundary for Milestone 2. Engine work should not require redesigning node identity, triad construction, or inversion semantics.
 
-Milestone 1 is complete when the silent panel is independently useful and validated. Milestone 2 is complete when the mock adapter has been replaced, the audio lifecycle passes its tests, and sustained chord changes are audibly smooth.
+Milestone 1 is complete when the overlay is independently useful and validated. Milestone 2 is complete when the native adapter is integrated, the audio lifecycle passes its tests, and sustained chord changes are audibly smooth.
 
 ## Open design decisions
 
