@@ -743,7 +743,7 @@ Item {
 
               Text {
                 anchors.centerIn: parent
-                text: parent.note.pitch
+                text: parent.note.pitch + 1
                 color: root.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -804,7 +804,7 @@ Item {
               color: root.foreground
               opacity: 0.58
               font.family: Style.font.family
-              font.pixelSize: Style.font.bodySmall
+              font.pixelSize: Style.font.body
               horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
             }

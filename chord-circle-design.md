@@ -87,13 +87,13 @@ The center of the circle displays:
 - The constructed chord name, such as `C major` or `A minor`.
 - The active note names, such as `C · E · G`.
 - The scale-degree coordinates, such as `1 · 3 · 5`.
-- The chromatic interval coordinates without a unit suffix, such as `0 · 4 · 7`.
+- The one-based chromatic interval coordinates without a unit suffix, such as `1 · 5 · 8`.
 
 The chord title, tonal spellings, degree values, and chromatic values use fixed-height line boxes with explicit vertical centering so accidental glyph metrics cannot shift adjacent rows.
 
 Inversion may be displayed as a slash name such as `C/E` when a playback bass is selected, but it does not alter the nodes or edges.
 
-While computer keys are held, their pitch classes also appear as compact momentary numerical coordinates at their strict chromatic positions inside the tonal circle. The coordinates run clockwise from `0` at C at the top through `11` at B, and each visible number corresponds directly to the simultaneously activated outer chromatic sector. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
+While computer keys are held, their pitch classes also appear as compact momentary numerical coordinates at their strict chromatic positions inside the tonal circle. The coordinates run clockwise from `1` at C at the top through `12` at B, and each visible number corresponds directly to the simultaneously activated outer chromatic sector. This deliberately redundant inner reference helps users recall the mapping between fifths-space nodes, chromatic order, and the center's interval coordinates without adding chromatic graph edges.
 
 ## Plugin shape
 
@@ -155,7 +155,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Allow the active quality to toggle off without clearing the selected root, and disable inversion auditions while no quality is active.
 - Display the constructed chord name and active note names in the center.
 - Display scale-degree roles on active tonal nodes and show spelled notes, degree coordinates, and semitone coordinates in the center.
-- Show momentary `0–11` held-note coordinates at chromatic positions inside the tonal circle, with `0` fixed at the top for C and matching outer-ring activation.
+- Show momentary `1–12` held-note coordinates at chromatic positions inside the tonal circle, with `1` fixed at the top for C and matching outer-ring activation.
 - Treat inversions as the same structural chord.
 - Make root, first, second, and applicable third inversion controls audition the complete persistent chord with the appropriate bass and slash label.
 

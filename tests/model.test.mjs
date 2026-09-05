@@ -81,7 +81,7 @@ test("exclusive quality controls can toggle the active choice off", () => {
 test("chords expose scale-degree and semitone analysis", () => {
   const major = model.chord(0, 0, 0)
   assert.equal(major.degreeNames, "1 · 3 · 5")
-  assert.equal(major.semitoneNames, "0 · 4 · 7")
+  assert.equal(major.semitoneNames, "1 · 5 · 8")
   assert.equal(model.chordRole(major, 0), "1")
   assert.equal(model.chordRole(major, 4), "3")
   assert.equal(model.chordRole(major, 7), "5")
@@ -93,7 +93,7 @@ test("chords expose scale-degree and semitone analysis", () => {
   assert.equal(minorSeventh.label, "Am7")
   assert.equal(minorSeventh.noteNames, "A · C · E · G")
   assert.equal(minorSeventh.degreeNames, "1 · ♭3 · 5 · ♭7")
-  assert.equal(minorSeventh.semitoneNames, "0 · 3 · 7 · 10")
+  assert.equal(minorSeventh.semitoneNames, "1 · 4 · 8 · 11")
 })
 
 test("seventh chords support third inversion and four-note recognition", () => {
