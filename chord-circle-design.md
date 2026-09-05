@@ -41,7 +41,7 @@ C · G · D · A · E · B · F♯/G♭ · D♭/C♯ · A♭/G♯ · E♭/D♯ �
 
 Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node shows a concise pitch label and its primary lower-octave computer-key binding, while deterministic triad construction chooses a context-appropriate spelling for the center readout.
 
-The persistent preset pitch classes are white nodes joined by white edges. The selected root has an accent border. Held keyboard pitch classes add an accent glow and accent edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
+The persistent preset pitch classes are accent-colored nodes joined by accent edges. The selected root has a white border. Held keyboard pitch classes add a white glow and white edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
 ## Chord state
 
@@ -106,7 +106,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Give every node a stable pitch-class identity, concise enharmonic label, and primary computer-key label.
 - Select a preset root with a primary click directly on its node.
 - Connect every pair of active nodes with an edge.
-- Derive exactly three persistent white nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary accent layer.
+- Derive exactly three persistent accent-colored nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary white layer.
 - Keep edges behind nodes and labels.
 - Scale cleanly within the large overlay window without clipping labels or hit targets.
 

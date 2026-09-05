@@ -276,8 +276,8 @@ Item {
               ctx.beginPath()
               ctx.arc(ring.cx, ring.cy, ring.graphRadius, 0, Math.PI * 2)
               ctx.stroke()
-              drawEdges(ctx, Model.edges(root.selectedChord.pitches), root.foreground, 3)
-              drawEdges(ctx, Model.edges(root.heldPitches), root.activeColor, 4)
+              drawEdges(ctx, Model.edges(root.selectedChord.pitches), root.activeColor, 3)
+              drawEdges(ctx, Model.edges(root.heldPitches), root.foreground, 4)
             }
           }
 
@@ -300,9 +300,9 @@ Item {
                 height: width
                 radius: width / 2
                 visible: held
-                color: Util.alpha(root.activeColor, 0.18)
+                color: Util.alpha(root.foreground, 0.18)
                 border.width: 3
-                border.color: root.activeColor
+                border.color: root.foreground
               }
 
               Rectangle {
@@ -311,9 +311,9 @@ Item {
                 width: Style.space(62)
                 height: width
                 radius: width / 2
-                color: preset ? root.foreground : held ? root.activeColor : index === ring.hoverIndex ? Util.alpha(root.foreground, 0.12) : Color.popups.background
+                color: preset ? root.activeColor : held ? root.foreground : index === ring.hoverIndex ? Util.alpha(root.foreground, 0.12) : Color.popups.background
                 border.width: selectedRoot ? 3 : preset || held ? 2 : 1
-                border.color: selectedRoot ? root.activeColor : preset ? root.foreground : held ? root.activeColor : root.gridColor
+                border.color: selectedRoot ? root.foreground : preset ? root.activeColor : held ? root.foreground : root.gridColor
 
                 Column {
                   anchors.centerIn: parent
