@@ -32,7 +32,7 @@ omarchy plugin add https://github.com/nkarl/omachords.git --enable
 Build the audio engine inside the installed checkout:
 
 ```bash
-cd ~/.config/omarchy/plugins/local.chord-circle
+cd ~/.config/omarchy/plugins/io.github.nkarl.omachords
 cargo build --release --manifest-path engine/Cargo.toml
 mkdir -p bin
 install -m755 engine/target/release/chord-circle-engine bin/chord-circle-engine
@@ -43,7 +43,25 @@ The visualization remains usable if the engine is unavailable. An engine error a
 
 ## Usage
 
-Open or close Chord Circle with `Super` + `Shift` + `K`.
+Open or close Chord Circle directly with:
+
+```bash
+omarchy-shell shell toggle io.github.nkarl.omachords '{}'
+```
+
+To use `Super` + `Shift` + `K`, add the following to `~/.config/hypr/bindings.lua`. This intentionally replaces Omarchy's existing action on that shortcut:
+
+```lua
+hl.unbind("SUPER + SHIFT + K")
+o.bind("SUPER + SHIFT + K", "Chord Circle", "omarchy-shell shell toggle io.github.nkarl.omachords {}")
+```
+
+Reload and check the Hyprland configuration:
+
+```bash
+hyprctl reload
+hyprctl configerrors
+```
 
 - Click an inner-circle note to select the chord root.
 - Choose `TRIAD` or `7TH`, then choose a quality to display the persistent chord.
@@ -56,7 +74,7 @@ The default keys ascend chromatically across `A W S E D F T G Y H U J K O L P ; 
 ## Removal
 
 ```bash
-omarchy plugin remove local.chord-circle
+omarchy plugin remove io.github.nkarl.omachords
 ```
 
 ## Development

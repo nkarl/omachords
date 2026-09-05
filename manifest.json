@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "local.chord-circle",
+  "id": "io.github.nkarl.omachords",
   "name": "Chord Circle",
-  "version": "0.9.4",
+  "version": "1.0.0",
   "author": "Kyle",
   "license": "MIT",
   "description": "Build and compare triads and seventh chords across tonal and chromatic pitch circles.",
