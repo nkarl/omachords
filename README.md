@@ -2,7 +2,7 @@
 
 Chord Circle is a large Omarchy Quattro overlay window for constructing and visualizing chords on a circle of fifths.
 
-Milestone 1 is a silent UI prototype presented as a large, centered, keyboard-exclusive window. It uses the same two-octave computer-keyboard layout as `max.piano`, with literal piano semantics: each pressed key immediately activates its pitch-class node, held keys combine into edges and shapes, and each released key immediately deactivates only its own note. Repeated octaves share one node. The root, quality, and inversion controls leave keyboard mode and provide triad presets, while Play records the atomic command that the persistent synth will receive in Milestone 2. A dedicated mock adapter implements the future engine boundary without starting an audio process.
+Milestone 1 is a silent UI prototype presented as a large, centered, keyboard-exclusive window. A clicked root and the selected quality produce a persistent white triad, with the root distinguished by an accent border. Independently, the same two-octave computer-keyboard layout as `max.piano` provides literal piano semantics: each held key adds a momentary accent glow and held-note edges without replacing the selected triad. Repeated octaves share one node. Root, First, and Second are audition buttons that record the corresponding complete chord command for the persistent synth planned in Milestone 2. A dedicated mock adapter implements that future engine boundary without starting an audio process.
 
 White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`.
 

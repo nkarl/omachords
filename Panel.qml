@@ -18,8 +18,7 @@ Item {
   property var heldKeys: ({})
   property var heldPitches: []
   property int heldBass: -1
-  property bool keyboardMode: false
-  property string mockStatus: "Engine deferred · Play previews the command"
+  property string mockStatus: "Engine deferred · Choose an inversion to audition"
 
   readonly property color foreground: Color.foreground
 
@@ -39,11 +38,8 @@ Item {
     { note: "C6", midi: 84, key: Qt.Key_V }
   ]
   readonly property var selectedChord: Model.chord(root.rootIndex, root.qualityIndex, root.inversionIndex)
-  readonly property var displayPitches: root.keyboardMode ? root.heldPitches : root.selectedChord.pitches
-  readonly property int displayBass: root.keyboardMode ? root.heldBass : root.selectedChord.bass
-  readonly property var displayTriad: root.keyboardMode ? Model.identifyTriad(root.heldPitches, root.heldBass) : root.selectedChord
-  readonly property string displayLabel: root.keyboardMode ? (root.displayTriad ? root.displayTriad.label : root.heldPitches.length === 0 ? "No notes" : root.heldPitches.length + (root.heldPitches.length === 1 ? " note" : " notes")) : root.selectedChord.label
-  readonly property string displayNoteNames: root.keyboardMode ? (root.displayTriad ? root.displayTriad.noteNames : root.heldPitches.length === 0 ? "Press a piano key" : Model.pitchSetNames(root.heldPitches)) : root.selectedChord.noteNames
+  readonly property var heldTriad: Model.identifyTriad(root.heldPitches, root.heldBass)
+  readonly property string heldSummary: root.heldPitches.length === 0 ? "Press any piano key" : root.heldTriad ? "Held: " + root.heldTriad.label : "Held: " + Model.pitchSetNames(root.heldPitches)
   readonly property color gridColor: Util.alpha(root.foreground, 0.30)
   readonly property color quietColor: Util.alpha(root.foreground, 0.16)
   readonly property color activeColor: Color.accent
@@ -77,40 +73,31 @@ Item {
     var normalizedQuality = Model.wrap(nextQuality, Model.QUALITIES.length)
     var normalizedInversion = Model.wrap(nextInversion, Model.INVERSIONS.length)
     if (normalizedRoot === root.rootIndex && normalizedQuality === root.qualityIndex && normalizedInversion === root.inversionIndex)
-      return
+      return false
 
     root.rootIndex = normalizedRoot
     root.qualityIndex = normalizedQuality
     root.inversionIndex = normalizedInversion
     root.revision += 1
     graph.requestPaint()
+    return true
   }
 
   function selectRoot(index) {
-    root.leaveKeyboardMode()
     root.setSelection(index, root.qualityIndex, root.inversionIndex)
   }
 
   function selectQuality(index) {
-    root.leaveKeyboardMode()
     root.setSelection(root.rootIndex, index, root.inversionIndex)
   }
 
-  function selectInversion(index) {
-    root.leaveKeyboardMode()
-    root.setSelection(root.rootIndex, root.qualityIndex, index)
-  }
-
-  function leaveKeyboardMode() {
-    root.keyboardMode = false
-    root.releaseAllKeys()
-    graph.requestPaint()
-  }
-
-  function playMock() {
-    var pitches = root.displayPitches
-    engine.setChord(root.revision, pitches, root.displayBass)
-    root.mockStatus = "Queued " + root.displayLabel + " · " + root.displayNoteNames
+  function auditionInversion(index) {
+    var changed = root.setSelection(root.rootIndex, root.qualityIndex, index)
+    if (!changed)
+      root.revision += 1
+    var chord = Model.chord(root.rootIndex, root.qualityIndex, index)
+    engine.setChord(root.revision, chord.pitches, chord.bass)
+    root.mockStatus = "Queued " + chord.label + " · " + chord.inversionLabel + " inversion"
     playFlash.restart()
   }
 
@@ -148,7 +135,6 @@ Item {
     var next = Model.updateHeldKeys(root.heldKeys, key, note, pressed, autoRepeat)
     if (next === root.heldKeys)
       return false
-    root.keyboardMode = true
     root.rebuildHeldState(next)
     return true
   }
@@ -159,13 +145,16 @@ Item {
     root.rebuildHeldState({})
   }
 
-  function nodeActive(pitch) {
-    return Model.contains(root.displayPitches, pitch)
+  function presetActive(pitch) {
+    return Model.contains(root.selectedChord.pitches, pitch)
+  }
+
+  function heldActive(pitch) {
+    return Model.contains(root.heldPitches, pitch)
   }
 
   onSelectedChordChanged: graph.requestPaint()
   onHeldPitchesChanged: graph.requestPaint()
-  onKeyboardModeChanged: graph.requestPaint()
   onOpenedChanged: if (!root.opened) root.releaseAllKeys()
 
   MockEngine {
@@ -175,7 +164,7 @@ Item {
   Timer {
     id: playFlash
     interval: 1200
-    onTriggered: root.mockStatus = "Engine deferred · Play previews the command"
+    onTriggered: root.mockStatus = "Engine deferred · Choose an inversion to audition"
   }
 
   PanelWindow {
@@ -287,47 +276,67 @@ Item {
               ctx.beginPath()
               ctx.arc(ring.cx, ring.cy, ring.graphRadius, 0, Math.PI * 2)
               ctx.stroke()
-              drawEdges(ctx, Model.edges(root.displayPitches), root.activeColor, 3)
+              drawEdges(ctx, Model.edges(root.selectedChord.pitches), root.foreground, 3)
+              drawEdges(ctx, Model.edges(root.heldPitches), root.activeColor, 4)
             }
           }
 
           Repeater {
             model: Model.FIFTHS.length
-            delegate: Rectangle {
+            delegate: Item {
               required property int index
               readonly property var note: Model.noteAt(index)
-              readonly property bool selectedRoot: !root.keyboardMode && index === root.rootIndex
-              readonly property bool active: root.nodeActive(note.pitch)
-              width: Style.space(64)
-              height: Style.space(64)
-              radius: height / 2
+              readonly property bool selectedRoot: index === root.rootIndex
+              readonly property bool preset: root.presetActive(note.pitch)
+              readonly property bool held: root.heldActive(note.pitch)
+              width: Style.space(76)
+              height: Style.space(76)
               x: Model.polarX(ring.cx, ring.graphRadius, Model.sectorMidDeg(index)) - width / 2
               y: Model.polarY(ring.cy, ring.graphRadius, Model.sectorMidDeg(index)) - height / 2
-              color: active ? root.activeColor : index === ring.hoverIndex ? Util.alpha(root.foreground, 0.12) : Color.popups.background
-              border.width: selectedRoot || active ? 3 : 1
-              border.color: active || selectedRoot ? root.activeColor : root.gridColor
 
-              Column {
+              Rectangle {
                 anchors.centerIn: parent
-                spacing: 0
+                width: Style.space(76)
+                height: width
+                radius: width / 2
+                visible: held
+                color: Util.alpha(root.activeColor, 0.18)
+                border.width: 3
+                border.color: root.activeColor
+              }
 
-                Text {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  text: note.shortLabel
-                  color: active ? Color.popups.background : root.foreground
-                  opacity: active ? 1 : 0.78
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.body
-                  font.bold: true
-                }
+              Rectangle {
+                id: nodeCore
+                anchors.centerIn: parent
+                width: Style.space(62)
+                height: width
+                radius: width / 2
+                color: preset ? root.foreground : held ? root.activeColor : index === ring.hoverIndex ? Util.alpha(root.foreground, 0.12) : Color.popups.background
+                border.width: selectedRoot ? 3 : preset || held ? 2 : 1
+                border.color: selectedRoot ? root.activeColor : preset ? root.foreground : held ? root.activeColor : root.gridColor
 
-                Text {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  text: root.primaryKeyLabels[note.pitch]
-                  color: active ? Color.popups.background : root.foreground
-                  opacity: active ? 0.78 : 0.42
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                Column {
+                  anchors.centerIn: parent
+                  spacing: 0
+
+                  Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: note.shortLabel
+                    color: preset || held ? Color.popups.background : root.foreground
+                    opacity: preset || held ? 1 : 0.78
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                  }
+
+                  Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.primaryKeyLabels[note.pitch]
+                    color: preset || held ? Color.popups.background : root.foreground
+                    opacity: preset || held ? 0.78 : 0.42
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                  }
                 }
               }
 
@@ -352,7 +361,7 @@ Item {
 
             Text {
               width: parent.width
-              text: root.displayLabel
+              text: root.selectedChord.label
               color: root.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.title
@@ -362,7 +371,7 @@ Item {
 
             Text {
               width: parent.width
-              text: root.displayNoteNames
+              text: root.selectedChord.noteNames
               color: root.foreground
               opacity: 0.72
               font.family: Style.font.family
@@ -373,7 +382,7 @@ Item {
 
             Text {
               width: parent.width
-              text: root.keyboardMode ? (root.heldPitches.length > 0 ? "Nodes follow the keys currently held" : "Press any piano key") : "Click a note or play the keyboard"
+              text: root.heldSummary
               color: root.foreground
               opacity: 0.68
               font.family: Style.font.family
@@ -442,33 +451,18 @@ Item {
               delegate: Button {
                 required property var modelData
                 required property int index
-                text: modelData.label
-                selected: index === root.inversionIndex
+                text: modelData.label + "  ▶"
+                selected: playFlash.running && index === root.inversionIndex
                 bordered: true
                 foreground: root.foreground
                 fontFamily: Style.font.family
                 fontSize: Style.font.bodySmall
                 onClicked: {
-                  root.selectInversion(index)
+                  root.auditionInversion(index)
                   keyCatcher.forceActiveFocus()
                 }
               }
             }
-          }
-        }
-
-        Button {
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: "Play " + root.selectedChord.label
-          selected: playFlash.running
-          bordered: true
-          foreground: root.foreground
-          fontFamily: Style.font.family
-          fontSize: Style.font.body
-          tooltipText: "Milestone 1 records the atomic engine command without producing sound"
-          onClicked: {
-            root.playMock()
-            keyCatcher.forceActiveFocus()
           }
         }
 

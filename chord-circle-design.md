@@ -13,7 +13,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 ## Goals
 
 - Make the internal interval structure of a chord immediately visible.
-- Select a root, triad quality, and inversion through direct controls.
+- Select a root and triad quality through direct controls, then audition root position, first inversion, or second inversion.
 - Use the same two-octave computer-keyboard layout as Quick Piano to activate pitch classes while keys are held.
 - Show similarities and differences between consecutive chords.
 - Play all active notes as one synchronized chord through a stable audio stream.
@@ -31,7 +31,7 @@ The plugin is not a piano, sequencer, or four-part voicing tool. A chord is mode
 
 ## Core musical model
 
-The canonical preset state is a root pitch class, one of four triad qualities, and one of three inversions. The model derives exactly three pitch classes from that selection. Keyboard mode is independent and momentary: the graph is exactly the pitch classes represented by currently held piano keys, including zero, one, or two notes. Supporting saved free-form pitch sets, seventh-chord presets, extensions, and clusters is deferred.
+The canonical preset state is a root pitch class and one of four triad qualities. The model derives exactly three persistent pitch classes from that selection. Keyboard state is independent and momentary: currently held piano keys add a second visual layer without replacing or modifying the preset. Root position, first inversion, and second inversion are playback choices for the preset rather than structural graph modes. Supporting saved free-form pitch sets, seventh-chord presets, extensions, and clusters is deferred.
 
 The circle contains twelve pitch-class nodes ordered by ascending fifths:
 
@@ -41,7 +41,7 @@ C · G · D · A · E · B · F♯/G♭ · D♭/C♯ · A♭/G♯ · E♭/D♯ �
 
 Enharmonic notes such as F♯ and G♭ share one pitch-class node. Each node shows a concise pitch label and its primary lower-octave computer-key binding, while deterministic triad construction chooses a context-appropriate spelling for the center readout.
 
-The active pitch classes are nodes. An edge joins every pair of active nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in the chord.
+The persistent preset pitch classes are white nodes joined by white edges. The selected root has an accent border. Held keyboard pitch classes add an accent glow and accent edges for the duration of the press, including when they coincide with preset nodes. Three notes form a triangle whose geometry remains unchanged across inversions. The graph is descriptive rather than directional: an edge means that two pitch classes coexist in one layer.
 
 ## Chord state
 
@@ -59,9 +59,9 @@ held.bass              pitch class of the lowest held keyboard note
 revision               monotonically increasing change identifier
 ```
 
-Changes should be committed atomically. Selecting a root, quality, or inversion produces one new revision. Inversion changes the bass and playback label without changing the pitch-class graph.
+Selecting a root or quality updates the persistent triad atomically. Choosing an inversion sends one complete audition command with the corresponding bass without changing the pitch-class graph.
 
-Keyboard input follows Quick Piano exactly. White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press updates the graph immediately, so a single key shows one node and a partial combination shows its current nodes and edges. Every accepted release removes only that key; releasing all keys leaves the keyboard graph empty. Pointer selection of a root, quality, or inversion exits keyboard mode and displays the selected preset.
+Keyboard input follows Quick Piano exactly. White notes use `A S D F G H J K L ; ' Z X C V`; black notes use `W E T Y U O P [ ] \`. A deterministic held-key transition accepts each physical press or release exactly once and rejects Qt-marked auto-repeat events and duplicate transitions. Every accepted press immediately adds a glow and any held-note edges over the persistent triad. Every accepted release removes only that momentary contribution. Pointer selection and keyboard performance never clear or rewrite one another.
 
 No musical selection cycles from the keyboard: a mapped piano key always resolves to one fixed note, and repeating the same combination always produces the same pitch-class set and chord identity. Root, quality, and inversion presets are changed with the pointer controls rather than cycling shortcuts.
 
@@ -106,7 +106,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Give every node a stable pitch-class identity, concise enharmonic label, and primary computer-key label.
 - Select a preset root with a primary click directly on its node.
 - Connect every pair of active nodes with an edge.
-- Derive exactly three active nodes from a preset root and quality while allowing keyboard mode to display any number of held pitch classes.
+- Derive exactly three persistent white nodes from a preset root and quality while allowing any number of held pitch classes to appear as a momentary accent layer.
 - Keep edges behind nodes and labels.
 - Scale cleanly within the large overlay window without clipping labels or hit targets.
 
@@ -126,7 +126,7 @@ Deliver a complete silent chord-exploration overlay. A user can construct chords
 - Construct major, minor, diminished, and augmented triads from interval formulas.
 - Display the constructed chord name and active note names in the center.
 - Treat inversions as the same structural chord.
-- Display root, first, and second inversions with the appropriate bass and slash label.
+- Make root, first, and second inversion controls audition the persistent triad with the appropriate bass and slash label.
 
 ### Interaction and accessibility
 
@@ -161,19 +161,19 @@ user action
   → recompute the chord label and graph
 ```
 
-Pressing Play sends the current revision, all three derived pitch classes, and the inversion-derived bass to the engine adapter in one `setChord` call. Selection changes do not play automatically. Hover and focus are transient presentation changes and must not create chord revisions.
+Pressing an inversion button sends the current preset's three derived pitch classes and inversion-derived bass to the engine adapter in one `setChord` call. Root and quality selection do not play automatically. Hover and focus are transient presentation changes and must not create engine commands.
 
 ## UI tests
 
 - Fifths-order index and pitch-class mapping.
 - Root selection across all twelve fifths-ordered nodes.
-- Quality and inversion transitions.
+- Quality transitions and inversion audition commands.
 - Piano key press, release, auto-repeat suppression, and duplicate-octave handling.
 - Enharmonic node labels mapped to a single pitch identity.
 - Triad construction for every root and supported quality.
 - Inversion-invariant pitch-class graphs and inversion-specific bass values.
 - Graph edge generation for every supported triad.
-- One atomic `setChord` command per Play action, containing the current revision, all three pitches, and the bass.
+- One atomic `setChord` command per inversion-button action, containing the current revision, all three pitches, and the bass.
 - Direct node hit targets and hover behavior.
 - Keyboard navigation and auto-repeat rejection.
 
@@ -187,7 +187,7 @@ Pressing Play sends the current revision, all three derived pitch classes, and t
 - Changing the root or quality changes the graph and label in one visible action.
 - Moving between two chords clearly identifies shared and changed structure.
 - The overlay validates as an Omarchy plugin and scales within the active output while remaining independent of bar position and orientation.
-- The mock engine log proves that each Play action sends the complete chord state atomically.
+- The mock engine log proves that each inversion audition sends the complete chord state atomically.
 
 ## Explicitly deferred
 
@@ -268,7 +268,7 @@ Closing the panel should default to silencing the chord while keeping the synth 
 
 ## Audio/UI integration
 
-- A Play action sends exactly one `set_chord` command for the current UI revision.
+- An inversion audition sends exactly one `set_chord` command for the current UI revision.
 - The visible sounding state follows the last acknowledged revision, not merely the last requested revision.
 - Audio failure must not prevent silent chord exploration.
 - Rapid edits may coalesce before transmission, but the engine must never receive a partially updated chord.
@@ -307,5 +307,5 @@ Milestone 1 is complete when the silent panel is independently useful and valida
 
 ## Open design decisions
 
-- Whether playback uses one fixed register or an optional bass/inversion selector.
+- The concrete MIDI register assigned to each inversion.
 - Whether closing the panel always silences playback or a user setting may allow continued sound.
