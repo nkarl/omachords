@@ -25,17 +25,18 @@ Omachords runs as unsandboxed user code inside `omarchy-shell`. Review third-par
 
 Install and enable the plugin from its public Git repository:
 
-```bash
+```nu
 omarchy plugin add https://github.com/nkarl/omachords.git --enable
 ```
 
-Run the setup script. It builds the audio engine, enables the plugin, and configures `Super` + `Shift` + `K` unless that shortcut is already customized:
+Build the audio engine from the installed plugin directory:
 
-```bash
-~/.config/omarchy/plugins/nkarl.omachords/install.sh
+```nu
+cd ~/.config/omarchy/plugins/nkarl.omachords
+cargo build --locked --release --manifest-path engine/Cargo.toml --target-dir engine/target
 ```
 
-Use `install.sh --no-shortcut` to build and enable Omachords without changing Hyprland bindings. The script backs up `bindings.lua` before adding its marked shortcut block. If the shortcut already has a user-defined binding, the script leaves it untouched and prints the direct toggle command instead.
+The plugin runs the engine directly from `engine/target/release/omachords-engine`. If you use a custom `XDG_CONFIG_HOME`, substitute that directory for `~/.config` in these instructions. Run the build command again after updating the plugin.
 
 The visualization remains usable if the engine is unavailable. An engine error appears in the overlay, and another audio attempt occurs only after a new note or inversion action; failures never trigger an automatic restart loop.
 
@@ -43,11 +44,11 @@ The visualization remains usable if the engine is unavailable. An engine error a
 
 Open or close Omachords directly with:
 
-```bash
+```nu
 omarchy-shell shell toggle nkarl.omachords '{}'
 ```
 
-The setup script assigns `Super` + `Shift` + `K` by adding the following marked override to `~/.config/hypr/bindings.lua`. It replaces Omarchy's stock action but never replaces another customization detected in that file:
+Optionally assign a global launcher shortcut yourself in `~/.config/hypr/bindings.lua`. Check existing shortcuts with `omarchy menu keybindings --print` first. The following example assigns `Super` + `Shift` + `K`, replacing any existing action for that combination; choose a different combination in both lines if you want to keep its current action:
 
 ```lua
 hl.unbind("SUPER + SHIFT + K")
@@ -56,7 +57,7 @@ o.bind("SUPER + SHIFT + K", "Omachords", "omarchy-shell shell toggle nkarl.omach
 
 Reload and check the Hyprland configuration:
 
-```bash
+```nu
 hyprctl reload
 hyprctl configerrors
 ```
@@ -69,13 +70,17 @@ hyprctl configerrors
 
 The default keys ascend chromatically across `A W S E D F T G Y H U J K O L P ; ' [ Z ] X \ C V B N M , . /`. The default range is C3–C5.
 
+Tone keys are handled inside the focused Omachords overlay. Only the optional launcher shortcut needs a Hyprland binding; Omachords does not edit Hyprland configuration.
+
 ## Removal
 
-```bash
-~/.config/omarchy/plugins/nkarl.omachords/uninstall.sh
-```
+If you added a launcher shortcut, remove the two lines you added to `bindings.lua`, then run `hyprctl reload` and `hyprctl configerrors`.
 
-The removal script deletes only its marked shortcut block, keeps a backup of `bindings.lua`, validates Hyprland, and then delegates plugin removal to Omarchy.
+Remove the plugin with Omarchy:
+
+```nu
+omarchy plugin remove nkarl.omachords
+```
 
 ## Development
 
@@ -83,17 +88,16 @@ Development happens on `work`; `main` is reserved for tested, deployment-ready s
 
 Run the complete validation suite before promoting a change:
 
-```bash
+```nu
 omarchy plugin validate .
 qmllint -I /usr/share/omarchy/shell Panel.qml EngineAdapter.qml MockEngine.qml
 node --test tests/model.test.mjs
-QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input tests
+with-env { QT_QPA_PLATFORM: offscreen, QT_QPA_PLATFORMTHEME: "", QT_QUICK_CONTROLS_STYLE: Basic } { /usr/lib/qt6/bin/qmltestrunner -input tests }
 cargo test --manifest-path engine/Cargo.toml
-cargo build --release --manifest-path engine/Cargo.toml
-bash -n install.sh uninstall.sh
+cargo build --locked --release --manifest-path engine/Cargo.toml --target-dir engine/target
 ```
 
-The compiled engine under `bin/` and Cargo build output are intentionally excluded from version control.
+Cargo build output is intentionally excluded from version control.
 
 ## References and prior art
 
