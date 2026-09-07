@@ -183,6 +183,19 @@ function midiVoicingInRange(rootIndex, qualityIndex, inversionIndex, low, high, 
   return notes[notes.length - 1] <= range.high ? notes : []
 }
 
+function isBindableKey(key) {
+  // Qt::Key codes: printable keys start at Space; Key_unknown ends the range.
+  // Escape closes the overlay, and standalone modifiers cannot play tones.
+  if (typeof key !== "number" || !isFinite(key) || Math.floor(key) !== key || key < 0x20 || key >= 0x01ffffff)
+    return false
+  return key !== 0x01000000 // Escape
+    && key !== 0x01000020 // Shift
+    && key !== 0x01000021 // Control
+    && key !== 0x01000022 // Meta
+    && key !== 0x01000023 // Alt
+    && key !== 0x01001103 // AltGr
+}
+
 function normalizeKeyBindings(value, defaults) {
   var fallback = (defaults || []).slice(0)
   if (!Array.isArray(value) || value.length !== fallback.length)
@@ -191,10 +204,10 @@ function normalizeKeyBindings(value, defaults) {
   var result = []
   for (var i = 0; i < value.length; i++) {
     var binding = value[i]
-    if (!binding || !isFinite(Number(binding.key)) || typeof binding.label !== "string" || binding.label.length === 0 || binding.label.length > MAX_KEY_LABEL_LENGTH || seen[String(binding.key)])
+    if (!binding || !isBindableKey(binding.key) || typeof binding.label !== "string" || binding.label.length === 0 || binding.label.length > MAX_KEY_LABEL_LENGTH || seen[String(binding.key)])
       return fallback
     seen[String(binding.key)] = true
-    result.push({ key: Math.round(Number(binding.key)), label: binding.label })
+    result.push({ key: binding.key, label: binding.label })
   }
   return result
 }
