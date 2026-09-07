@@ -1,14 +1,18 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::Deserialize;
+use serde::de::{self, SeqAccess, Visitor};
 use serde_json::json;
 use std::error::Error;
 use std::f32::consts::TAU;
+use std::fmt;
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 const MIDI_NOTES: usize = 128;
+const MAX_COMMAND_BYTES: usize = 4096;
+const MAX_COMMAND_NOTES: usize = 128;
 const ATTACK_SECONDS: f32 = 0.010;
 const RELEASE_SECONDS: f32 = 0.045;
 const MASTER_GAIN: f32 = 0.24;
@@ -18,11 +22,11 @@ const MASTER_GAIN: f32 = 0.24;
 enum Command {
     SetHeld {
         revision: u64,
-        notes: Vec<u8>,
+        notes: Notes,
     },
     Audition {
         revision: u64,
-        notes: Vec<u8>,
+        notes: Notes,
         #[serde(default = "default_duration_ms")]
         duration_ms: u64,
     },
@@ -30,6 +34,92 @@ enum Command {
         revision: u64,
     },
     Shutdown,
+}
+
+#[derive(Debug)]
+struct Notes {
+    values: [u8; MAX_COMMAND_NOTES],
+    len: usize,
+}
+
+impl Notes {
+    fn as_slice(&self) -> &[u8] {
+        &self.values[..self.len]
+    }
+}
+
+impl<'de> Deserialize<'de> for Notes {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct NotesVisitor;
+
+        impl<'de> Visitor<'de> for NotesVisitor {
+            type Value = Notes;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "at most {MAX_COMMAND_NOTES} note entries")
+            }
+
+            fn visit_seq<A: SeqAccess<'de>>(self, mut sequence: A) -> Result<Notes, A::Error> {
+                let mut notes = Notes {
+                    values: [0; MAX_COMMAND_NOTES],
+                    len: 0,
+                };
+                while let Some(note) = sequence.next_element::<u8>()? {
+                    if notes.len == MAX_COMMAND_NOTES {
+                        return Err(de::Error::custom("notes exceeds 128 entries"));
+                    }
+                    notes.values[notes.len] = note;
+                    notes.len += 1;
+                }
+                Ok(notes)
+            }
+        }
+
+        deserializer.deserialize_seq(NotesVisitor)
+    }
+}
+
+// Keep a fixed buffer and drain oversized input without accumulating its remainder.
+// LF and CRLF terminators do not count toward the JSON byte limit.
+fn read_command(reader: &mut impl BufRead) -> io::Result<Option<Result<Command, String>>> {
+    let mut bytes = [0_u8; MAX_COMMAND_BYTES + 1]; // Allow a trailing CR before LF.
+    let mut len = 0;
+    let mut oversized = false;
+    let newline = loop {
+        let available = match reader.fill_buf() {
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            result => result?,
+        };
+        if available.is_empty() {
+            if len == 0 && !oversized {
+                return Ok(None);
+            }
+            break false;
+        }
+        let end = available.iter().position(|&byte| byte == b'\n');
+        let count = end.unwrap_or(available.len());
+        if !oversized {
+            if count > bytes.len() - len {
+                oversized = true;
+            } else {
+                bytes[len..len + count].copy_from_slice(&available[..count]);
+                len += count;
+            }
+        }
+        reader.consume(count + usize::from(end.is_some()));
+        if end.is_some() {
+            break true;
+        }
+    };
+    if newline && len > 0 && bytes[len - 1] == b'\r' {
+        len -= 1;
+    }
+    if oversized || len > MAX_COMMAND_BYTES {
+        return Ok(Some(Err("command exceeds 4096 bytes".into())));
+    }
+    Ok(Some(
+        serde_json::from_slice(&bytes[..len]).map_err(|error| format!("invalid command: {error}")),
+    ))
 }
 
 fn default_duration_ms() -> u64 {
@@ -207,7 +297,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut synth = Synth::new(config.sample_rate, channels);
 
     let stream = device.build_output_stream(
-        config.clone(),
+        config,
         move |output: &mut [f32], _| {
             let now_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
             synth.render(output, &audio_state, now_ms);
@@ -221,25 +311,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     stream.play()?;
     emit(json!({"event":"ready","rate":config.sample_rate,"channels":config.channels}));
 
-    for line in io::stdin().lock().lines() {
-        let line = match line {
+    run_commands(&mut io::stdin().lock(), &shared, started, emit)?;
+    drop(stream);
+    Ok(())
+}
+
+fn run_commands(
+    reader: &mut impl BufRead,
+    shared: &SharedState,
+    started: Instant,
+    mut respond: impl FnMut(serde_json::Value),
+) -> io::Result<()> {
+    while let Some(command) = read_command(reader)? {
+        let command = match command {
             Ok(value) => value,
             Err(error) => {
-                emit(json!({"event":"error","message":error.to_string()}));
-                continue;
-            }
-        };
-        let command: Command = match serde_json::from_str(&line) {
-            Ok(value) => value,
-            Err(error) => {
-                emit(json!({"event":"error","message":format!("invalid command: {error}")}));
+                respond(json!({"event":"error","message":error}));
                 continue;
             }
         };
         match command {
             Command::SetHeld { revision, notes } => {
-                shared.set_held(&notes);
-                emit(json!({"event":"applied","revision":revision}));
+                shared.set_held(notes.as_slice());
+                respond(json!({"event":"applied","revision":revision}));
             }
             Command::Audition {
                 revision,
@@ -252,27 +346,148 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .unwrap_or_default()
                     .as_millis()
                     .min(u64::MAX as u128) as u64;
-                shared.set_audition(&notes, until);
-                emit(json!({"event":"applied","revision":revision}));
+                shared.set_audition(notes.as_slice(), until);
+                respond(json!({"event":"applied","revision":revision}));
             }
             Command::Stop { revision } => {
                 shared.stop();
-                emit(json!({"event":"applied","revision":revision}));
+                respond(json!({"event":"applied","revision":revision}));
             }
             Command::Shutdown => {
                 shared.stop();
-                emit(json!({"event":"shutdown"}));
+                respond(json!({"event":"shutdown"}));
                 break;
             }
         }
     }
-    drop(stream);
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{BufReader, Cursor, Read};
+
+    #[test]
+    fn command_byte_limit_accepts_exact_boundary_and_line_terminators() {
+        let command = r#"{"cmd":"stop","revision":1}"#;
+        for ending in ["\n", "\r\n", ""] {
+            let input = format!(
+                "{command}{}{ending}",
+                " ".repeat(MAX_COMMAND_BYTES - command.len())
+            );
+            for capacity in [1, 31, 8192] {
+                let mut reader = BufReader::with_capacity(capacity, input.as_bytes());
+                assert!(matches!(
+                    read_command(&mut reader).unwrap().unwrap().unwrap(),
+                    Command::Stop { revision: 1 }
+                ));
+                assert!(read_command(&mut reader).unwrap().is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn oversized_lines_are_drained_and_the_next_command_survives() {
+        for size in [MAX_COMMAND_BYTES + 1, 1_000_000] {
+            for ending in ["\n", "\r\n"] {
+                let input = format!(
+                    "{}{ending}{{\"cmd\":\"stop\",\"revision\":2}}\n",
+                    "x".repeat(size)
+                );
+                let mut reader = BufReader::with_capacity(31, input.as_bytes());
+                assert_eq!(
+                    read_command(&mut reader).unwrap().unwrap().unwrap_err(),
+                    "command exceeds 4096 bytes"
+                );
+                assert!(matches!(
+                    read_command(&mut reader).unwrap().unwrap().unwrap(),
+                    Command::Stop { revision: 2 }
+                ));
+                assert!(read_command(&mut reader).unwrap().is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn oversized_unterminated_input_uses_a_stream_and_reaches_eof() {
+        let input = io::repeat(b'x').take(1_000_000);
+        let mut reader = BufReader::with_capacity(64, input);
+        assert!(read_command(&mut reader).unwrap().unwrap().is_err());
+        assert!(read_command(&mut reader).unwrap().is_none());
+    }
+
+    #[test]
+    fn byte_limit_counts_utf8_bytes_and_invalid_input_recovers() {
+        let input = format!(
+            "{{\"cmd\":\"stop\",\"revision\":1,\"extra\":\"{}\"}}\n",
+            "é".repeat(2050)
+        );
+        assert!(input.chars().count() < MAX_COMMAND_BYTES);
+        assert_eq!(
+            read_command(&mut input.as_bytes())
+                .unwrap()
+                .unwrap()
+                .unwrap_err(),
+            "command exceeds 4096 bytes"
+        );
+        let mut reader = Cursor::new(b"\xff\n\n{bad json}\n{\"cmd\":\"shutdown\"}");
+        for _ in 0..3 {
+            assert!(read_command(&mut reader).unwrap().unwrap().is_err());
+        }
+        assert!(matches!(
+            read_command(&mut reader).unwrap().unwrap().unwrap(),
+            Command::Shutdown
+        ));
+    }
+
+    #[test]
+    fn both_note_commands_accept_128_entries_and_reject_the_129th() {
+        for name in ["set_held", "audition"] {
+            for count in [0, MAX_COMMAND_NOTES, MAX_COMMAND_NOTES + 1] {
+                let input = json!({"cmd":name,"revision":1,"notes":vec![60; count]}).to_string();
+                let command = read_command(&mut input.as_bytes()).unwrap().unwrap();
+                if count > MAX_COMMAND_NOTES {
+                    assert!(command.unwrap_err().contains("notes exceeds 128 entries"));
+                } else {
+                    let notes = match command.unwrap() {
+                        Command::SetHeld { notes, .. } | Command::Audition { notes, .. } => notes,
+                        _ => panic!("unexpected command"),
+                    };
+                    assert_eq!(notes.as_slice(), vec![60; count]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn rejected_commands_preserve_playback_and_a_following_stop_still_works() {
+        let state = SharedState::default();
+        state.set_held(&[60]);
+        state.set_audition(&[64], u64::MAX);
+        let too_many = json!({"cmd":"set_held","revision":2,"notes":vec![67; 129]});
+        let oversized = format!(
+            "{{\"cmd\":\"stop\",\"revision\":3}}{}",
+            " ".repeat(MAX_COMMAND_BYTES)
+        );
+        let input = format!("{too_many}\n{oversized}\n{{\"cmd\":\"stop\",\"revision\":4}}\n");
+        let mut responses = Vec::new();
+        run_commands(&mut input.as_bytes(), &state, Instant::now(), |response| {
+            if response["event"] == "error" {
+                assert!(state.desired(60, 0));
+                assert!(state.desired(64, 0));
+                assert!(!state.desired(67, 0));
+            }
+            responses.push(response);
+        })
+        .unwrap();
+        assert_eq!(responses.len(), 3);
+        assert_eq!(responses[0]["event"], "error");
+        assert_eq!(responses[1]["event"], "error");
+        assert_eq!(responses[2], json!({"event":"applied","revision":4}));
+        assert!(!state.desired(60, 0));
+        assert!(!state.desired(64, 0));
+    }
 
     #[test]
     fn midi_a4_is_440_hz() {

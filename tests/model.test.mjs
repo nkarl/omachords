@@ -48,6 +48,40 @@ test("persisted keyboard bindings reject malformed or duplicate maps", () => {
   assert.deepEqual(Array.from(model.normalizeKeyBindings([{ key: 90, label: "Z" }, { key: 90, label: "Z" }], defaults)), defaults)
 })
 
+test("persisted key codes reject coercion, fractions, and out-of-range values", () => {
+  const defaults = [{ key: 65, label: "A" }, { key: 87, label: "W" }]
+  for (const key of [65.1, "90", null, true, [], {}, undefined, NaN, Infinity, -Infinity, -1, 0, 31, 0x02000000, Number.MAX_SAFE_INTEGER]) {
+    const result = model.normalizeKeyBindings([{ key, label: "Z" }, { key: 88, label: "X" }], defaults)
+    assert.deepEqual(Array.from(result), defaults, `accepted invalid key: ${String(key)}`)
+  }
+  const result = model.normalizeKeyBindings([{ key: 65.1, label: "A" }, { key: 65.2, label: "B" }], defaults)
+  assert.deepEqual(Array.from(result), defaults)
+})
+
+test("persisted bindings reject reserved keys and preserve valid integer codes", () => {
+  const defaults = [{ key: 65, label: "A" }]
+  for (const key of [0x01ffffff, 0x01000000, 0x01000020, 0x01000021, 0x01000022, 0x01000023, 0x01001103]) {
+    assert.equal(model.isBindableKey(key), false)
+    assert.deepEqual(Array.from(model.normalizeKeyBindings([{ key, label: "Reserved" }], defaults)), defaults)
+  }
+  for (const key of [32, 90, 0x00c9, 0x01000030, 0x01000012]) {
+    assert.equal(model.isBindableKey(key), true)
+    assert.equal(model.normalizeKeyBindings([{ key, label: "Key" }], defaults)[0].key, key)
+  }
+})
+
+test("persisted key labels have a bounded length without interpreting markup", () => {
+  const defaults = [{ key: 65, label: "A" }]
+  for (const label of ["<b>A</b>", "X".repeat(model.MAX_KEY_LABEL_LENGTH)]) {
+    const result = model.normalizeKeyBindings([{ key: 65, label }], defaults)
+    assert.equal(result[0].label, label)
+  }
+  for (const label of ["", "X".repeat(model.MAX_KEY_LABEL_LENGTH + 1)]) {
+    const result = model.normalizeKeyBindings([{ key: 65, label }], defaults)
+    assert.equal(result[0].label, "A")
+  }
+})
+
 test("quality formulas produce the expected C triads", () => {
   assert.deepEqual(Array.from(model.chord(0, 0, 0).pitches), [0, 4, 7])
   assert.deepEqual(Array.from(model.chord(0, 1, 0).pitches), [0, 3, 7])
