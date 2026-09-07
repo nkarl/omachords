@@ -6,6 +6,7 @@ var TOP_DEG = -90
 var MIN_RANGE_MIDI = 36
 var MAX_RANGE_MIDI = 84
 var MAX_RANGE_KEYS = 31
+var MAX_KEY_LABEL_LENGTH = 32
 var DEFAULT_RANGE_LOW = 48
 var DEFAULT_RANGE_HIGH = 72
 var MIDI_SHARP_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
@@ -190,7 +191,7 @@ function normalizeKeyBindings(value, defaults) {
   var result = []
   for (var i = 0; i < value.length; i++) {
     var binding = value[i]
-    if (!binding || !isFinite(Number(binding.key)) || typeof binding.label !== "string" || binding.label.length === 0 || seen[String(binding.key)])
+    if (!binding || !isFinite(Number(binding.key)) || typeof binding.label !== "string" || binding.label.length === 0 || binding.label.length > MAX_KEY_LABEL_LENGTH || seen[String(binding.key)])
       return fallback
     seen[String(binding.key)] = true
     result.push({ key: Math.round(Number(binding.key)), label: binding.label })

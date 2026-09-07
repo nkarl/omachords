@@ -702,6 +702,7 @@ Item {
                   Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: preset || held ? (root.roleForPitch(note.pitch) || root.keyLabelForPitch(note.pitch)) : root.keyLabelForPitch(note.pitch)
+                    textFormat: Text.PlainText
                     color: preset || held ? Color.popups.background : root.foreground
                     opacity: preset || held ? 0.92 : 0.42
                     font.family: Style.font.family
@@ -936,6 +937,7 @@ Item {
         Text {
           width: parent.width
           text: root.audioStatus + " · " + engine.detail
+          textFormat: Text.PlainText
           color: root.foreground
           opacity: playFlash.running ? 0.9 : 0.5
           font.family: Style.font.family
@@ -946,6 +948,7 @@ Item {
         Text {
           width: parent.width
           text: "Keys low → high: " + root.keyMapSummary()
+          textFormat: Text.PlainText
           color: root.foreground
           opacity: 0.45
           font.family: Style.font.family

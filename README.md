@@ -40,6 +40,8 @@ The plugin runs the engine directly from `engine/target/release/omachords-engine
 
 The visualization remains usable if the engine is unavailable. An engine error appears in the overlay, and another audio attempt occurs only after a new note or inversion action; failures never trigger an automatic restart loop.
 
+Engine startup times out after five seconds. While waiting, Omachords retains only the latest held-note state and audition request; stopping or closing the overlay clears pending playback. A startup failure clears those requests and terminates a stalled engine.
+
 ## Usage
 
 Open or close Omachords directly with:
@@ -92,12 +94,15 @@ Run the complete validation suite before promoting a change:
 omarchy plugin validate .
 qmllint -I /usr/share/omarchy/shell Panel.qml EngineAdapter.qml MockEngine.qml
 node --test tests/model.test.mjs
+python3 tests/run_engineadapter.py
 with-env { QT_QPA_PLATFORM: offscreen, QT_QPA_PLATFORMTHEME: "", QT_QUICK_CONTROLS_STYLE: Basic } { /usr/lib/qt6/bin/qmltestrunner -input tests }
 cargo test --manifest-path engine/Cargo.toml
 cargo build --locked --release --manifest-path engine/Cargo.toml --target-dir engine/target
 ```
 
 Cargo build output is intentionally excluded from version control.
+
+The engine adapter tests require Python 3 and Quickshell. They run the real adapter with audio-free child processes in a temporary, headless configuration, covering startup timeout, bounded pending playback, cancellation, failures, and explicit retry.
 
 ## References and prior art
 
